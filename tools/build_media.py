@@ -158,6 +158,7 @@ def main():
                 "kindLabel": label,
                 "group": rel_dir.replace(os.sep, " / ") or None,
                 "bytes": os.path.getsize(full),
+                "origin": "drop-folder",
                 "suggestedFor": suggest_people(caption, tree),
             }
             entries.append((full, entry))
@@ -180,16 +181,30 @@ def main():
         return
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    # Anything no longer in the drop folder should stop being published.
-    wanted = {e["file"] for _s, e in entries}
+
+    # Photographs uploaded from the browser have no counterpart in the drop
+    # folder, so pruning "anything not found locally" would silently delete
+    # them. Only files this tool put there are its to remove.
+    kept = []
+    if os.path.exists(CATALOGUE):
+        with open(CATALOGUE, encoding="utf-8") as fh:
+            kept = [i for i in json.load(fh).get("items", [])
+                    if i.get("origin") == "browser"]
+    protected = {i["file"] for i in kept}
+
+    wanted = {e["file"] for _s, e in entries} | protected
     for existing in os.listdir(OUT_DIR):
         if existing not in wanted:
             os.remove(os.path.join(OUT_DIR, existing))
             print(f"  removed stale {existing}")
+    if protected:
+        print(f"  kept {len(protected)} browser-uploaded photograph(s)")
 
     for src, e in entries:
-        dst = os.path.join(OUT_DIR, e["file"])
-        shutil.copy2(src, dst)
+        shutil.copy2(src, os.path.join(OUT_DIR, e["file"]))
+
+    # Browser uploads stay in the catalogue; they are not ours to forget.
+    entries = entries + [(None, item) for item in kept]
 
     payload = {
         "generated": datetime.datetime.now(

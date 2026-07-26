@@ -13,6 +13,7 @@
 <iframe id="f" src="../docs/index.html" style="width:1400px;height:900px;border:0"></iframe>
 <pre id="log"></pre>
 <script>
+const SUITE = 'editortest';
 const results = [];
 const ok = (name, cond, extra = '') =>
   results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ' :: ' + extra : ''}`);
@@ -275,6 +276,95 @@ function typeInto(input, win, value) {
     ok('photograph catalogue present', false, 'no media.json loaded');
   }
 
+  // ── uploading ─────────────────────────────────────────────────────────────
+  // Build a real JPEG in the page, with EXIF containing GPS, and push it through
+  // the actual upload path.
+  function makeJpegWithExif(win) {
+    return new Promise((resolve) => {
+      const c = win.document.createElement('canvas');
+      c.width = 3000; c.height = 2000;            // oversized on purpose
+      const g = c.getContext('2d');
+      g.fillStyle = '#8c5a2b'; g.fillRect(0, 0, 3000, 2000);
+      g.fillStyle = '#fff'; g.fillRect(100, 100, 900, 700);
+      c.toBlob((blob) => blob.arrayBuffer().then((buf) => {
+        const jpeg = new Uint8Array(buf);
+        // Splice an APP1/Exif segment in after SOI so there is something to strip.
+        const tag = new TextEncoder().encode('Exif\0\0GPSLatitude 65.0 GPSLongitude 25.5');
+        const seg = new Uint8Array(4 + tag.length);
+        seg[0] = 0xFF; seg[1] = 0xE1;
+        seg[2] = ((tag.length + 2) >> 8) & 0xFF; seg[3] = (tag.length + 2) & 0xFF;
+        seg.set(tag, 4);
+        const out = new Uint8Array(2 + seg.length + (jpeg.length - 2));
+        out.set(jpeg.subarray(0, 2), 0);
+        out.set(seg, 2);
+        out.set(jpeg.subarray(2), 2 + seg.length);
+        resolve(new win.File([out], 'Briitta kotona 2024.jpg', { type: 'image/jpeg' }));
+      }), 'image/jpeg', 0.95);
+    });
+  }
+
+  const catBefore = (T.media.items || []).length;
+  const file = await makeJpegWithExif(win);
+  const asText = new TextDecoder().decode(new Uint8Array(await file.arrayBuffer()));
+  ok('the test image really does carry EXIF GPS', asText.includes('GPSLatitude'));
+
+  const staged = await E.stageUpload(file, { caption: 'A test photograph', kind: 'portrait' });
+  ok('staging adds it to the catalogue', (T.media.items || []).length === catBefore + 1);
+  ok('it is queued, not yet published', E.pending.length === 1);
+
+  const entry = staged.entry;
+  ok('the uploaded filename is generated, not taken from the file',
+     !/briitta|kotona|2024/i.test(entry.file), entry.file);
+  ok('the generated name is URL-safe', /^[a-z0-9.\-]+$/.test(entry.file), entry.file);
+  ok('the caption is what was typed', entry.caption === 'A test photograph');
+
+  const processed = new TextDecoder().decode(
+    Uint8Array.from(atob(E.pending[0].base64), (c) => c.charCodeAt(0)));
+  ok('EXIF is gone from what would be uploaded', !processed.includes('GPSLatitude'));
+  ok('the image was downscaled', entry.width <= 2000 && entry.height <= 2000,
+     `${entry.width}x${entry.height}`);
+  ok('and got smaller', entry.bytes < file.size, `${file.size} -> ${entry.bytes}`);
+
+  // The same bytes twice must not become two files.
+  const again = await E.stageUpload(await makeJpegWithExif(win),
+    { caption: 'duplicate', kind: 'portrait' });
+  ok('an identical image is recognised, not duplicated', !!again.skipped);
+
+  // Attach it, then remove it, and confirm nothing dangles.
+  const subj = T.data.people.find((p) => !p.living);
+  T.select(subj.id);
+  await sleep(80);
+  const boxNew = [...doc.querySelectorAll('[data-media]')]
+    .find((b) => b.dataset.media === entry.file);
+  ok('a queued photograph can be attached straight away', !!boxNew);
+  boxNew.checked = true;
+  boxNew.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(110);
+  ok('attaching a queued photograph works',
+     (T.data.people.find((p) => p.id === subj.id).media || []).includes(entry.file));
+
+  const mediaPayload = E.buildMediaPayload();
+  ok('the catalogue payload drops browser-only fields',
+     mediaPayload.items.every((m) => !('pending' in m) && !('dataUrl' in m)));
+  ok('verify() accepts the tree plus catalogue together',
+     E.verify(E.buildPayload(), mediaPayload).length === 0,
+     E.verify(E.buildPayload(), mediaPayload).slice(0, 2).join(' | '));
+
+  // A reference to a photograph that is not in the catalogue must be caught.
+  const dangling = JSON.parse(JSON.stringify(E.buildPayload()));
+  dangling.people.find((p) => !p.living).media = ['no-such-photo.jpg'];
+  ok('verify() catches a reference to a missing photograph',
+     E.verify(dangling, mediaPayload).some((m) => /not in the catalogue/.test(m)));
+
+  E.removePhotograph(entry.file);
+  await sleep(110);
+  ok('removing takes it out of the catalogue',
+     !(T.media.items || []).some((m) => m.file === entry.file));
+  ok('removing unqueues it rather than queuing a delete',
+     E.pending.length === 0 && E.deletes.size === 0);
+  ok('and detaches it from everyone',
+     !T.data.people.some((p) => (p.media || []).includes(entry.file)));
+
   // ── the payload that would be published ───────────────────────────────────
   const payload = E.buildPayload();
   ok('payload is flagged redacted', payload.redacted === true);
@@ -321,11 +411,24 @@ function typeInto(input, win, value) {
      !win.localStorage.getItem('familyArchive.token.v1')
      && !win.sessionStorage.getItem('familyArchive.token.v1'));
 
-  document.getElementById('log').textContent = results.join('\n');
-  const failed = results.filter((r) => r.startsWith('FAIL')).length;
-  document.title = `DONE ${results.length - failed}/${results.length}`;
+  report(results);
 })().catch((e) => {
   document.getElementById('log').textContent = 'THREW: ' + e.stack;
   document.title = 'THREW';
+  report(['FAIL  harness threw :: ' + String(e.message)]);
 });
+
+// Canvas encoding never completes under --virtual-time-budget, so this suite
+// has to run in real time — and a real-time headless Chrome gives no reliable
+// moment to read the DOM. Reporting back through the server's access log is the
+// one channel that always survives.
+function report(lines) {
+  document.getElementById('log').textContent = lines.join('\n');
+  const failed = lines.filter((r) => r.startsWith('FAIL')).length;
+  document.title = `DONE ${lines.length - failed}/${lines.length}`;
+  const payload = encodeURIComponent(
+    `${lines.length - failed}/${lines.length}::` +
+    lines.filter((r) => r.startsWith('FAIL')).join(' ;; ').slice(0, 900));
+  fetch(`/__result__?suite=${SUITE}&r=${payload}`).catch(() => {});
+}
 </script>

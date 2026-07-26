@@ -660,3 +660,50 @@ body.edit-mode .node { cursor: cell; }
   border: 1px solid var(--rule);
 }
 .pick span { overflow-wrap: anywhere; color: var(--ink-soft); }
+
+/* ── uploading ───────────────────────────────────────────────────────────── */
+
+.dropzone {
+  padding: 20px 16px;
+  margin-bottom: 12px;
+  text-align: center;
+  border: 2px dashed var(--rule);
+  border-radius: 9px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone p { margin: 0 0 6px; font-size: 13.5px; }
+.dz-note { font-size: 12px !important; color: var(--ink-faint) !important; margin: 0 !important; }
+
+.up-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+  font-size: 12.5px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow-wrap: anywhere;
+}
+.chip button {
+  width: 18px; height: 18px; line-height: 1;
+  color: var(--ink-soft);
+  background: none; border: 0; border-radius: 50%; cursor: pointer;
+}
+.chip button:hover { background: var(--accent-soft); color: var(--ink); }
+
+.pick-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px; }
+.drop-photo {
+  width: 26px; height: 26px;
+  font-size: 15px; line-height: 1;
+  color: var(--ink-faint);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.drop-photo:hover { color: #a33; border-color: #a33; }
+@media (prefers-color-scheme: dark) { .drop-photo:hover { color: #e08b8b; border-color: #7a4444; } }

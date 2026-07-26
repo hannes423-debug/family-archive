@@ -14,6 +14,7 @@
 <iframe id="f" src="../docs/index.html" style="width:1400px;height:900px;border:0"></iframe>
 <pre id="log"></pre>
 <script>
+const SUITE = 'drivertest';
 const results = [];
 const ok = (name, cond, extra = '') =>
   results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ' :: ' + extra : ''}`);
@@ -214,11 +215,24 @@ function realClick(el, win) {
   }
   ok('every catalogued image is actually served', broken === 0, `${broken} missing`);
 
-  document.getElementById('log').textContent = results.join('\n');
-  const failed = results.filter((r) => r.startsWith('FAIL')).length;
-  document.title = `DONE ${results.length - failed}/${results.length}`;
+  report(results);
 })().catch((e) => {
   document.getElementById('log').textContent = 'THREW: ' + e.stack;
   document.title = 'THREW';
+  report(['FAIL  harness threw :: ' + String(e.message)]);
 });
+
+// Canvas encoding never completes under --virtual-time-budget, so this suite
+// has to run in real time — and a real-time headless Chrome gives no reliable
+// moment to read the DOM. Reporting back through the server's access log is the
+// one channel that always survives.
+function report(lines) {
+  document.getElementById('log').textContent = lines.join('\n');
+  const failed = lines.filter((r) => r.startsWith('FAIL')).length;
+  document.title = `DONE ${lines.length - failed}/${lines.length}`;
+  const payload = encodeURIComponent(
+    `${lines.length - failed}/${lines.length}::` +
+    lines.filter((r) => r.startsWith('FAIL')).join(' ;; ').slice(0, 900));
+  fetch(`/__result__?suite=${SUITE}&r=${payload}`).catch(() => {});
+}
 </script>

@@ -43,7 +43,20 @@ const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
 let editing = false;
 let dirty = 0;
 let baseSha = null;        // sha of the tree.json we loaded, for conflict detection
+let headSha = null;        // branch head when we loaded, for conflict detection
 const undoStack = [];
+
+// Photographs chosen but not yet committed. Held as bytes plus a local blob URL
+// so they render immediately; uploaded as blobs when you publish.
+const pendingUploads = [];
+const pendingDeletes = new Set();
+
+// Uploaded images are re-encoded to at most this edge length. That keeps the
+// repository from filling with 5 MB phone photographs, and — the reason that
+// actually matters — re-encoding through a canvas discards EXIF, which on a
+// modern photograph carries GPS coordinates and a timestamp.
+const MAX_EDGE = 2000;
+const JPEG_QUALITY = 0.85;
 
 // ── identity ────────────────────────────────────────────────────────────────
 
@@ -147,7 +160,7 @@ function scrub(p) {
 }
 
 /** Independent re-check of the finished payload. The last gate before a push. */
-function verify(data) {
+function verify(data, media) {
   const problems = [];
   const byId = new Map(data.people.map((p) => [p.id, p]));
 
@@ -199,6 +212,25 @@ function verify(data) {
   for (const f of data.families) {
     for (const c of f.children) {
       if (!byId.has(c)) problems.push(`a family lists a child who does not exist`);
+    }
+  }
+
+  if (media) {
+    const known = new Set((media.items || []).map((m) => m.file));
+    for (const m of media.items || []) {
+      // Generated names only: an uploaded filename could be anything, and a
+      // path publishes as surely as a file.
+      if (!/^[a-z0-9.\-]+$/.test(m.file)) {
+        problems.push(`photograph filename is not URL-safe: ${m.file}`);
+      }
+      if (!m.caption) problems.push(`a photograph has no caption`);
+    }
+    for (const p of data.people) {
+      for (const ref of p.media || []) {
+        if (!known.has(ref)) {
+          problems.push(`${p.name}: references a photograph that is not in the catalogue`);
+        }
+      }
     }
   }
   return problems;
@@ -471,11 +503,13 @@ function renderEditor(p, panel, body) {
     if (cat.length) {
       const mine = new Set(p.media || []);
       out.push('<section><h3>Photographs</h3><div class="pick-list">'
-        + cat.map((m) => `<label class="pick">
+        + cat.map((m) => `<div class="pick-row"><label class="pick">
              <input type="checkbox" data-media="${T.esc(m.file)}"
                     ${mine.has(m.file) ? 'checked' : ''}>
-             <img src="./media/${T.esc(m.file)}" alt="" loading="lazy">
-             <span>${T.esc(m.caption)}</span></label>`).join('')
+             <img src="${T.esc(T.mediaSrc(m))}" alt="" loading="lazy">
+             <span>${T.esc(m.caption)}${m.pending ? ' · queued' : ''}</span></label>
+             <button type="button" class="drop-photo" data-drop-media="${T.esc(m.file)}"
+                     title="Remove from the archive">\u00d7</button></div>`).join('')
         + '</div></section>');
     }
   }
@@ -513,6 +547,14 @@ function renderEditor(p, panel, body) {
         if (box.checked) set.add(box.dataset.media); else set.delete(box.dataset.media);
         person.media = [...set];
       }, { repaintPanel: false });
+    });
+  });
+  body.querySelectorAll('[data-drop-media]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const file = btn.dataset.dropMedia;
+      if (!confirm('Remove this photograph from the archive entirely?')) return;
+      removePhotograph(file);
+      T.select(p.id, { centre: false });
     });
   });
   body.querySelectorAll('[data-add]').forEach((btn) => {
@@ -588,6 +630,124 @@ function applyForm(personId, body) {
   }
 }
 
+// ── uploading ───────────────────────────────────────────────────────────────
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Re-encode an uploaded image: downscale, strip metadata, return raw bytes.
+ *
+ * Going through a canvas is what removes EXIF. A phone photograph carries the
+ * time it was taken and often the coordinates of the place — which, for a
+ * picture taken in someone's house, is exactly the kind of thing this archive
+ * spends the rest of its effort not publishing.
+ */
+async function processImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close && bitmap.close();
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return { bytes, width: w, height: h };
+}
+
+/**
+ * Name the file, deliberately without reference to what it was called.
+ *
+ * An uploaded filename is whatever was on someone's phone, and it may well be a
+ * living person's name. The browser cannot check for that — under this
+ * archive's model those names are not stored anywhere, so there is nothing to
+ * check against. So the name is generated instead, and the meaning lives in the
+ * caption, which is typed on purpose.
+ */
+function generatedName(kind, hash) {
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`
+              + String(d.getDate()).padStart(2, '0');
+  return `${kind}-${stamp}-${hash.slice(0, 10)}.jpg`;
+}
+
+const KIND_LABELS = {
+  portrait: 'Portrait',
+  memorial: 'Gravestone or memorial',
+  document: 'Document',
+  photograph: 'Photograph',
+};
+
+async function stageUpload(file, { caption, kind }) {
+  const { bytes, width, height } = await processImage(file);
+  const hash = await sha256Hex(bytes);
+
+  const already = (T.media.items || []).find((m) => m.sha256 === hash);
+  if (already) return { skipped: already };
+
+  const name = generatedName(kind, hash);
+  const entry = {
+    file: name,
+    caption: caption.trim() || 'Untitled',
+    kind,
+    kindLabel: KIND_LABELS[kind] || 'Photograph',
+    group: null,
+    bytes: bytes.length,
+    width, height,
+    sha256: hash,
+    origin: 'browser',
+    suggestedFor: [],
+    pending: true,
+    dataUrl: URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })),
+  };
+
+  pendingUploads.push({ entry, base64: bytesToBase64(bytes) });
+  T.media.items = (T.media.items || []).concat([entry]);
+  T.refreshMedia();
+  markDirty();
+  return { entry };
+}
+
+function removePhotograph(file) {
+  const item = (T.media.items || []).find((m) => m.file === file);
+  if (!item) return;
+
+  const queuedIndex = pendingUploads.findIndex((u) => u.entry.file === file);
+  if (queuedIndex >= 0) {
+    URL.revokeObjectURL(pendingUploads[queuedIndex].entry.dataUrl);
+    pendingUploads.splice(queuedIndex, 1);
+  } else {
+    pendingDeletes.add(file);   // already published: needs deleting on the server
+  }
+
+  T.media.items = T.media.items.filter((m) => m.file !== file);
+  T.refreshMedia();
+  commitChange(() => {
+    for (const p of T.data.people) {
+      if ((p.media || []).includes(file)) p.media = p.media.filter((f) => f !== file);
+    }
+  });
+}
+
 // ── publishing ──────────────────────────────────────────────────────────────
 
 /** btoa() throws on anything non-Latin1, and this tree is full of ä and ö. */
@@ -645,11 +805,35 @@ async function api(path, options = {}) {
   return body;
 }
 
+function buildMediaPayload() {
+  const items = (T.media.items || []).map((m) => {
+    const c = { ...m };
+    delete c.pending;
+    delete c.dataUrl;
+    return c;
+  });
+  return {
+    generated: new Date().toISOString().replace(/\.\d+Z$/, '+00:00'),
+    count: items.length,
+    items,
+  };
+}
+
+/**
+ * Commit everything at once through the Git Data API.
+ *
+ * An upload touches three things — the image, the catalogue and the tree — and
+ * the Contents API can only write one file per call, which would mean three
+ * commits and three chances to land half a change. This builds one tree and one
+ * commit instead: blobs, then a tree on top of the current one, then a commit,
+ * then a single fast-forward of the branch.
+ */
 async function publish() {
   const status = el('pub-status');
-  const payload = buildPayload();
+  const treePayload = buildPayload();
+  const mediaPayload = buildMediaPayload();
 
-  const problems = verify(payload);
+  const problems = verify(treePayload, mediaPayload);
   if (problems.length) {
     status.className = 'pub-status bad';
     status.innerHTML = '<strong>Not published.</strong> '
@@ -661,39 +845,88 @@ async function publish() {
   if (!getToken()) { openAuth(); return; }
 
   status.className = 'pub-status';
-  status.textContent = 'Publishing…';
+  status.textContent = pendingUploads.length
+    ? `Uploading ${pendingUploads.length} photograph(s)…` : 'Publishing…';
 
+  const repo = `/repos/${REPO_OWNER}/${REPO_NAME}`;
   try {
-    // Re-read the remote sha so a change made elsewhere is a conflict, not a
-    // silent overwrite.
-    const current = await api(
-      `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`);
-    if (baseSha && current.sha !== baseSha) {
+    const ref = await api(`${repo}/git/ref/heads/${BRANCH}`);
+    const parent = ref.object.sha;
+    if (headSha && parent !== headSha) {
       status.className = 'pub-status bad';
-      status.innerHTML = '<strong>Someone else changed the tree.</strong> '
+      status.innerHTML = '<strong>Someone else changed the archive.</strong> '
         + 'Reload to get their version — publishing now would discard it.';
       return;
     }
+    const headCommit = await api(`${repo}/git/commits/${parent}`);
 
-    const result = await api(
-      `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          message: `Update the family tree (${dirty} change${dirty === 1 ? '' : 's'} from the browser editor)`,
-          content: toBase64(JSON.stringify(payload, null, 1) + '\n'),
-          sha: current.sha,
-          branch: BRANCH,
-        }),
+    const entries = [];
+
+    // Images first: each becomes a blob, uploaded base64.
+    for (let i = 0; i < pendingUploads.length; i++) {
+      const up = pendingUploads[i];
+      status.textContent = `Uploading photograph ${i + 1} of ${pendingUploads.length}…`;
+      const blob = await api(`${repo}/git/blobs`, {
+        method: 'POST',
+        body: JSON.stringify({ content: up.base64, encoding: 'base64' }),
       });
+      entries.push({ path: `docs/media/${up.entry.file}`, mode: '100644',
+                     type: 'blob', sha: blob.sha });
+    }
 
-    baseSha = result.content.sha;
+    // A null sha removes a path from the new tree.
+    for (const file of pendingDeletes) {
+      entries.push({ path: `docs/media/${file}`, mode: '100644',
+                     type: 'blob', sha: null });
+    }
+
+    entries.push({ path: 'docs/data/tree.json', mode: '100644', type: 'blob',
+                   content: JSON.stringify(treePayload, null, 1) + '\n' });
+    entries.push({ path: 'docs/data/media.json', mode: '100644', type: 'blob',
+                   content: JSON.stringify(mediaPayload, null, 1) + '\n' });
+
+    status.textContent = 'Committing…';
+    const tree = await api(`${repo}/git/trees`, {
+      method: 'POST',
+      body: JSON.stringify({ base_tree: headCommit.tree.sha, tree: entries }),
+    });
+
+    const bits = [];
+    if (dirty) bits.push(`${dirty} edit${dirty === 1 ? '' : 's'}`);
+    if (pendingUploads.length) bits.push(`${pendingUploads.length} photograph(s) added`);
+    if (pendingDeletes.size) bits.push(`${pendingDeletes.size} removed`);
+
+    const commit = await api(`${repo}/git/commits`, {
+      method: 'POST',
+      body: JSON.stringify({
+        message: `Update the family archive (${bits.join(', ') || 'no changes'})`,
+        tree: tree.sha,
+        parents: [parent],
+      }),
+    });
+
+    await api(`${repo}/git/refs/heads/${BRANCH}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sha: commit.sha }),
+    });
+
+    headSha = commit.sha;
+    for (const up of pendingUploads) {
+      delete up.entry.pending;
+      URL.revokeObjectURL(up.entry.dataUrl);
+      delete up.entry.dataUrl;
+    }
+    pendingUploads.length = 0;
+    pendingDeletes.clear();
     dirty = 0;
     clearDraft();
+    T.refreshMedia();
     paintBar();
+
     status.className = 'pub-status good';
     status.innerHTML = 'Published. GitHub Pages rebuilds in about a minute — '
-      + `<a href="${T.esc(result.commit.html_url)}" target="_blank" rel="noopener">`
-      + 'see the commit</a>.';
+      + `<a href="https://github.com/${REPO_OWNER}/${REPO_NAME}/commit/${commit.sha}" `
+      + 'target="_blank" rel="noopener">see the commit</a>.';
   } catch (err) {
     status.className = 'pub-status bad';
     if (err.status === 401 || err.status === 403) {
@@ -702,8 +935,8 @@ async function publish() {
         + '<button type="button" class="linkish" id="reauth">Use a different token</button>';
       const b = el('reauth');
       if (b) b.addEventListener('click', openAuth);
-    } else if (err.status === 409) {
-      status.textContent = 'Conflict — reload and try again.';
+    } else if (err.status === 409 || err.status === 422) {
+      status.textContent = 'The branch moved under us — reload and try again.';
     } else {
       status.textContent = err.message;
     }
@@ -729,6 +962,89 @@ function openAuth() {
   dlg.removeAttribute('hidden');
   el('auth-token').focus();
 }
+
+function wireUpload() {
+  const dlg = el('upload');
+  const input = el('up-file');
+  const preview = el('up-preview');
+  const confirmBox = el('up-confirm');
+  const addBtn = el('up-add');
+  let chosen = [];
+
+  const refresh = () => {
+    addBtn.disabled = !(chosen.length && confirmBox.checked);
+    preview.innerHTML = chosen.map((f, i) =>
+      `<span class="chip">${T.esc(f.name)}
+         <button type="button" data-drop="${i}" aria-label="Remove">×</button></span>`).join('');
+    preview.querySelectorAll('[data-drop]').forEach((b) => {
+      b.addEventListener('click', () => {
+        chosen.splice(Number(b.dataset.drop), 1);
+        refresh();
+      });
+    });
+  };
+
+  const take = (files) => {
+    chosen = chosen.concat([...files].filter((f) => f.type.startsWith('image/')));
+    refresh();
+  };
+
+  el('up-browse').addEventListener('click', () => input.click());
+  input.addEventListener('change', () => { take(input.files); input.value = ''; });
+  confirmBox.addEventListener('change', refresh);
+
+  const zone = el('dropzone');
+  ['dragenter', 'dragover'].forEach((evt) =>
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      zone.classList.add('over');
+    }));
+  ['dragleave', 'drop'].forEach((evt) =>
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      zone.classList.remove('over');
+    }));
+  zone.addEventListener('drop', (e) => take(e.dataTransfer.files));
+
+  el('up-cancel').addEventListener('click', () => {
+    chosen = [];
+    refresh();
+    dlg.setAttribute('hidden', '');
+  });
+
+  addBtn.addEventListener('click', async () => {
+    const caption = el('up-caption').value;
+    const kind = el('up-kind').value;
+    addBtn.disabled = true;
+    addBtn.textContent = 'Processing…';
+    let added = 0, skipped = 0;
+    for (const file of chosen) {
+      try {
+        const result = await stageUpload(file, {
+          caption: chosen.length > 1 ? `${caption} (${file.name})`.trim() : caption,
+          kind,
+        });
+        if (result.skipped) skipped++; else added++;
+      } catch (err) {
+        console.error('could not process', file.name, err);
+      }
+    }
+    chosen = [];
+    el('up-caption').value = '';
+    confirmBox.checked = false;
+    addBtn.textContent = 'Add';
+    refresh();
+    dlg.setAttribute('hidden', '');
+    const status = el('pub-status');
+    status.className = 'pub-status';
+    status.textContent = `${added} photograph(s) queued`
+      + (skipped ? `, ${skipped} already in the archive` : '')
+      + '. Publish to upload.';
+    if (T.selectedId) T.select(T.selectedId, { centre: false });
+  });
+}
+
+function openUpload() { el('upload').removeAttribute('hidden'); }
 
 function wireAuth() {
   el('auth-cancel').addEventListener('click', () => el('auth').setAttribute('hidden', ''));
@@ -775,11 +1091,13 @@ function setEditing(on) {
 async function init() {
   buildChrome();
   wireAuth();
+  wireUpload();
 
   el('edit-toggle').addEventListener('click', () => setEditing(!editing));
   el('btn-publish').addEventListener('click', publish);
   el('btn-undo').addEventListener('click', undo);
   el('btn-token').addEventListener('click', openAuth);
+  el('btn-upload').addEventListener('click', openUpload);
   el('btn-download').addEventListener('click', downloadJson);
   el('btn-discard').addEventListener('click', () => {
     if (!confirm('Discard every unpublished change and reload the published tree?')) return;
@@ -791,13 +1109,15 @@ async function init() {
     if (dirty > 0) { e.preventDefault(); e.returnValue = ''; }
   });
 
-  // Learn the current sha so conflicts can be detected without a token.
+  // Learn where the branch is, so a change made elsewhere is a conflict rather
+  // than a silent overwrite. Works without a token — the repository is public.
   try {
-    const meta = await (await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`
+    const ref = await (await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/ref/heads/${BRANCH}`
     )).json();
-    baseSha = meta.sha || null;
-  } catch (_) { baseSha = null; }
+    headSha = (ref.object && ref.object.sha) || null;
+    baseSha = headSha;
+  } catch (_) { headSha = null; }
 
   const draft = loadDraft();
   if (draft && draft.people) {
@@ -831,12 +1151,51 @@ function buildChrome() {
   bar.innerHTML = `
     <span id="pub-count" class="pub-count">No changes yet</span>
     <button type="button" class="mini" id="btn-undo">Undo</button>
+    <button type="button" class="mini" id="btn-upload">Add photograph</button>
     <button type="button" class="mini" id="btn-download">Download</button>
     <button type="button" class="mini" id="btn-token">Add token</button>
     <button type="button" class="mini" id="btn-discard">Discard</button>
     <button type="button" class="mini primary" id="btn-publish">Publish to GitHub</button>
     <span id="pub-status" class="pub-status"></span>`;
   document.querySelector('.topbar').insertAdjacentElement('afterend', bar);
+
+  const up = document.createElement('div');
+  up.id = 'upload';
+  up.className = 'auth';
+  up.hidden = true;
+  up.innerHTML = `
+    <div class="auth-card">
+      <h2>Add a photograph</h2>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="up-file" accept="image/*" multiple hidden>
+        <p><strong>Drop images here</strong> or
+           <button type="button" class="linkish" id="up-browse">choose files</button></p>
+        <p class="dz-note">Resized to ${MAX_EDGE}px and re-encoded, which also
+           strips EXIF — the timestamp and GPS coordinates a phone writes into
+           every photograph.</p>
+      </div>
+      <div id="up-preview" class="up-preview"></div>
+      <label class="fld"><span>Caption</span>
+        <input type="text" id="up-caption"
+               placeholder="Who or what this is, and when"></label>
+      <label class="fld"><span>Kind</span>
+        <select id="up-kind">
+          <option value="portrait">Portrait</option>
+          <option value="photograph">Photograph</option>
+          <option value="memorial">Gravestone or memorial</option>
+          <option value="document">Document</option>
+        </select></label>
+      <label class="check"><input type="checkbox" id="up-confirm">
+        Everyone pictured here has died</label>
+      <p class="auth-warn">This archive publishes nothing about living people,
+         and that has to include photographs of them. Nothing can check an image
+         for you — this one is on your word.</p>
+      <div class="btn-row">
+        <button type="button" class="mini" id="up-cancel">Cancel</button>
+        <button type="button" class="mini primary" id="up-add" disabled>Add</button>
+      </div>
+    </div>`;
+  document.body.appendChild(up);
 
   const dlg = document.createElement('div');
   dlg.id = 'auth';
@@ -868,7 +1227,11 @@ function buildChrome() {
 }
 
 window.Editor = { init, setEditing, verify, scrub, deriveLiving, parseDate,
-                  buildPayload, get dirty() { return dirty; } };
+                  buildPayload, buildMediaPayload, stageUpload, removePhotograph,
+                  processImage, generatedName,
+                  get dirty() { return dirty; },
+                  get pending() { return pendingUploads; },
+                  get deletes() { return pendingDeletes; } };
 
 if (window.Tree && window.Tree.ready) init();
 else window.addEventListener('tree-ready', init, { once: true });

@@ -81,12 +81,16 @@ asserting the privacy invariant structurally rather than against a list of names
 
 ```bash
 python3 -m http.server 8123 &
+# NOTE: real time, not --virtual-time-budget. Canvas encoding never completes
+# under virtual time, so the upload tests hang. Each suite reports its result by
+# fetching /__result__?suite=... , which lands in the server's access log.
 for t in drivertest editortest; do
-  google-chrome --headless=new --disable-gpu --virtual-time-budget=40000 \
-    --dump-dom "http://127.0.0.1:8123/tools/$t.html" | grep -o '<title>[^<]*'
+  google-chrome --headless=new --disable-gpu --user-data-dir=$(mktemp -d) \
+    "http://127.0.0.1:8123/tools/$t.html" & sleep 25; kill $!
 done
+grep -o '__result__?suite=[^ "]*' server.log
 # -> DONE 35/35   (read-only view)
-# -> DONE 60/60   (editor)
+# -> DONE 78/78   (editor)
 ```
 
 ---
@@ -141,8 +145,9 @@ and **Download** exports the file if you would rather commit it yourself.
 
 ## Photographs
 
-Drop images anywhere under `Family photos/` — that folder is gitignored, so the
-originals keep their Finnish names and whatever structure suits you.
+Photographs can be added two ways: uploaded in the browser (below), or dropped
+into `Family photos/` and imported. That folder is gitignored, so the originals
+keep their Finnish names and whatever structure suits you.
 
 ```bash
 python3 tools/build_media.py             # dry run: what would be published
@@ -155,10 +160,39 @@ listed in `docs/data/media.json`. **The rename is a privacy measure, not
 tidiness**: a path is published as surely as the file it points at, and the
 original folders were named after a living relative.
 
+The importer will not delete browser-uploaded photographs when it prunes —
+those carry `origin: "browser"` in the catalogue and are not its to remove.
+
 `--attach` guesses which people a photo belongs to by matching surname plus a
 birth or death year against the tree, and writes the links into
 `person.media`. After that, attachments are yours to change in the browser —
 open someone in edit mode and tick the photographs that are of them.
+
+### Uploading from the browser
+
+**Add photograph** in the edit bar takes a drop or a file picker. Each image is
+re-encoded through a canvas, which downscales it to 2000px and — the part that
+matters — **discards EXIF**, the timestamp and GPS coordinates a phone writes
+into every photograph. A picture taken in someone's house otherwise carries
+their address.
+
+Filenames are **generated**, never taken from the upload: `portrait-20260727-
+a1b2c3d4e5.jpg`. An uploaded file might be called anything, including a living
+person's name, and the browser cannot check for that — under this model those
+names are not stored anywhere, so there is nothing to check against. The meaning
+lives in the caption, which you type deliberately.
+
+Identical images are recognised by content hash and not duplicated.
+
+Nothing can inspect a photograph and tell you who is in it, so the upload dialog
+asks you to confirm that everyone pictured has died. That one is on your word,
+and the dialog says so.
+
+Publishing uses the **Git Data API**, not the Contents API: an upload touches the
+image, the catalogue and the tree, and the Contents API writes one file per call
+— three commits, three chances to land half a change. Instead it creates blobs,
+builds one tree on the current one, makes one commit, and fast-forwards the
+branch.
 
 ### Naming someone who is not in the tree
 

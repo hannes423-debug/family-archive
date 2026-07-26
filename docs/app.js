@@ -57,6 +57,13 @@ async function loadMedia() {
   MEDIA.byFile = new Map((MEDIA.items || []).map((m) => [m.file, m]));
 }
 
+/** Re-index the catalogue after the editor adds or removes an entry. */
+function refreshMedia() {
+  MEDIA.byFile = new Map((MEDIA.items || []).map((m) => [m.file, m]));
+  const btn = el('gallery-btn');
+  if (btn) btn.textContent = `\u{1F5BC} ${(MEDIA.items || []).length}`;
+}
+
 /** Photographs attached to a person. Living people never have any. */
 function mediaFor(p) {
   if (!p || p.living || !Array.isArray(p.media)) return [];
@@ -681,9 +688,10 @@ function showPanel(p) {
   const shots = mediaFor(p);
   if (shots.length) {
     out.push(`<section><h3>Photographs</h3><div class="shots">${
-      shots.map((m) => `<figure class="shot"><img src="./media/${esc(m.file)}"
+      shots.map((m) => `<figure class="shot"><img src="${esc(mediaSrc(m))}"
           alt="${esc(m.caption)}" loading="lazy" data-lightbox="${esc(m.file)}">
-        <figcaption>${esc(m.kindLabel)}</figcaption></figure>`).join('')}</div></section>`);
+        <figcaption>${esc(m.kindLabel)}${
+          m.pending ? ' · not published yet' : ''}</figcaption></figure>`).join('')}</div></section>`);
   }
 
   if (p.notes && p.notes.length) {
@@ -715,6 +723,11 @@ function wireLightbox(scope) {
   });
 }
 
+/** Published images come from docs/media/; ones still queued are local blobs. */
+function mediaSrc(m) {
+  return m && m.dataUrl ? m.dataUrl : `./media/${m.file}`;
+}
+
 function openLightbox(file) {
   const item = MEDIA.byFile.get(file);
   if (!item) return;
@@ -730,7 +743,7 @@ function openLightbox(file) {
   }
   box.innerHTML = `<figure>
       <button type="button" class="lb-close" data-close aria-label="Close">×</button>
-      <img src="./media/${esc(item.file)}" alt="${esc(item.caption)}">
+      <img src="${esc(mediaSrc(item))}" alt="${esc(item.caption)}">
       <figcaption><strong>${esc(item.kindLabel)}</strong> — ${esc(item.caption)}</figcaption>
     </figure>`;
   box.hidden = false;
@@ -755,9 +768,10 @@ function openGallery() {
   for (const p of DATA.people) (p.media || []).forEach((f) => attached.add(f));
 
   const card = (m) => `<figure class="shot">
-      <img src="./media/${esc(m.file)}" alt="${esc(m.caption)}" loading="lazy"
+      <img src="${esc(mediaSrc(m))}" alt="${esc(m.caption)}" loading="lazy"
            data-lightbox="${esc(m.file)}">
-      <figcaption>${esc(m.caption)}</figcaption></figure>`;
+      <figcaption>${esc(m.caption)}${
+        m.pending ? ' <em>· not published yet</em>' : ''}</figcaption></figure>`;
 
   const loose = MEDIA.items.filter((m) => !attached.has(m.file));
   box.innerHTML = `<div class="gallery">
@@ -943,8 +957,9 @@ window.Tree = {
   set data(v) { DATA = v; },
   P, F, POS,
   rebuild, select, clearSelection, showPanel, fitView, centreOn, highlightSelection,
-  lifeYears, eventLine, esc, linkify, personButton, listSection,
-  get media() { return MEDIA; }, mediaFor, wireLightbox, openLightbox, openGallery,
+  lifeYears, eventLine, esc, linkify, personButton, listSection, mediaSrc,
+  get media() { return MEDIA; }, mediaFor, refreshMedia,
+  wireLightbox, openLightbox, openGallery,
   get selectedId() { return selectedId; },
   onPanel: null,   // editor.js installs a renderer here
 };
