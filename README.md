@@ -26,7 +26,7 @@ Three things enforce this, deliberately independent of one another:
 | Guard | Where | What it stops |
 |---|---|---|
 | `.gitignore` | `/data/`, `*.ged`, `tree.private.json` | The source data being staged at all |
-| `build_site.py` | whitelist redaction + a self-check | The generator emitting a living person's fields |
+| `build_site.py` / `editor.js` | whitelist redaction + a self-check | The generator or the editor emitting a living person's fields |
 | `verify_public.py` | pre-push hook, and CI once the workflow is installed | Anything that got past the first two reaching the web |
 
 If you ever need the full tree locally, build it and keep it local:
@@ -68,16 +68,73 @@ python3 tools/verify_public.py     # prove the result is safe to publish
 
 ### Testing
 
-`tools/drivertest.html` drives the real page in an iframe — real events on real
-elements — and asserts both that the UI works and that no living person's data
-reaches the rendered output.
+Two suites, both driving the real page in an iframe with real events, and both
+asserting the privacy invariant structurally rather than against a list of names:
+
+- `tools/drivertest.html` — the read-only tree: layout, search, selection, and
+  that no living person's data reaches the rendered output.
+- `tools/editortest.html` — the editor: every field the form must refuse, that
+  status changes strip data in both directions, that adding relatives grows the
+  tree correctly, and that `verify()` catches a tampered payload rather than
+  merely passing a clean one.
 
 ```bash
 python3 -m http.server 8123 &
-google-chrome --headless=new --disable-gpu --virtual-time-budget=20000 \
-  --dump-dom http://127.0.0.1:8123/tools/drivertest.html | grep -o '<title>[^<]*'
-# -> DONE 25/25
+for t in drivertest editortest; do
+  google-chrome --headless=new --disable-gpu --virtual-time-budget=40000 \
+    --dump-dom "http://127.0.0.1:8123/tools/$t.html" | grep -o '<title>[^<]*'
+done
+# -> DONE 25/25   (read-only view)
+# -> DONE 55/55   (editor)
 ```
+
+---
+
+## Editing in the browser
+
+The published tree is editable in place. Open the site, press **Edit**, and you
+can rename people, correct dates, and add parents, partners, children and
+siblings — including new generations above the current top, which is the point.
+**Publish to GitHub** commits `docs/data/tree.json` straight back to this
+repository via the REST API and Pages redeploys within about a minute.
+
+`docs/data/tree.json` is therefore now the **source of truth** for the published
+tree, not a build artifact. `build_site.py` refuses to overwrite a file that has
+been edited in the browser unless you pass `--force`.
+
+### The one rule the editor enforces
+
+There is no private store, so a living person may hold a surname, a sex and
+their position in the tree, and nothing else — not even for you. Three
+independent mechanisms keep that true, because the one that matters is the one
+still working when the others are wrong:
+
+| Where | What it does |
+|---|---|
+| the form | never renders given names, places, occupation or notes for a living person |
+| `scrub()` | strips those fields again on *every* write, so a stale value cannot survive a status change |
+| `verify()` | re-reads the finished payload and refuses to publish on any hit |
+
+"Living" is derived from the record, never asserted. A dated death always counts.
+An undated *deceased, date unknown* — GEDCOM's own "died, no details" — is
+trusted for an ancestor, which is what lets you name someone whose dates you
+don't know. It is **not** trusted for anyone born in the last 25 years, so
+ticking that box and then entering a recent birth year cannot publish a child.
+Entry order does not change the answer.
+
+The same rule lives in `tools/build_site.py` and `tools/verify_public.py`; if you
+change one, change all three.
+
+### Signing in
+
+Publishing needs a **fine-grained** personal access token limited to this
+repository with **Contents: read and write**, and nothing else. The token stays
+in your browser and is sent only to `api.github.com`; leave *Remember on this
+device* unticked and it is forgotten when the tab closes. Opening the editor
+without a token does nothing — GitHub is what decides whether you may write.
+
+Unpublished changes are kept in a local draft and offered back after a reload,
+and **Download** exports the file if you would rather commit it yourself.
 
 ---
 
@@ -127,7 +184,7 @@ design/ARCHITECTURE.md  The full platform design — data model, sync, media,
                         auth, risks, and a 13-phase roadmap. Written before any
                         code, on purpose.
 docs/                   The published tree. Served by GitHub Pages as-is.
-tools/                  Redaction, verification, browser test, parked workflow.
+tools/                  Redaction, verification, browser tests, parked workflow.
 data/                   Private source genealogy, plus the curation scripts that
                         contain living people's names. GITIGNORED — never
                         committed, not present in any commit in this history.

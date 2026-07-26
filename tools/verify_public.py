@@ -9,7 +9,7 @@ CI can run it on the public repo, where the source GEDCOM does not exist.
 
 Exit status is non-zero on any finding, so it can gate the Pages deploy.
 """
-import json, os, re, subprocess, sys
+import datetime, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TREE = os.path.join(ROOT, "docs", "data", "tree.json")
@@ -30,6 +30,24 @@ TEXT_SUFFIXES = (".py", ".js", ".html", ".css", ".json", ".md", ".yml", ".yaml",
 FORBIDDEN_SCALARS = ("given", "married", "nick", "occupation", "geniId")
 FORBIDDEN_OBJECTS = ("birth", "death", "burial")
 FORBIDDEN_LISTS = ("aka", "notes")
+
+# Mirrors docs/editor.js and build_site.py. Anyone marked deceased must actually
+# satisfy the rule — a tree.json edited in the browser, or by hand, does not get
+# to simply assert it.
+PRESUMED_DEAD_AFTER_YEARS = 100
+ASSERTION_FLOOR_YEARS = 25
+
+
+def derive_living(p, this_year):
+    byear = ((p.get("birth") or {}).get("date") or {}).get("year")
+    born_recently = bool(byear) and (this_year - byear) < ASSERTION_FLOOR_YEARS
+    dated_death = ((p.get("death") or {}).get("date")
+                   or (p.get("burial") or {}).get("date"))
+    if dated_death:
+        return False
+    if (p.get("death") or p.get("burial")) and not born_recently:
+        return False
+    return not (byear and this_year - byear >= PRESUMED_DEAD_AFTER_YEARS)
 
 problems = []
 
@@ -189,6 +207,12 @@ def check_tree_json():
         name = p.get("name", "")
         if not name.startswith("Living"):
             fail(f"{pid}: living person's name is not masked ({name!r})")
+
+    this_year = datetime.date.today().year
+    for p in data.get("people", []):
+        if p.get("living") != derive_living(p, this_year):
+            fail(f"{p.get('id')}: living flag disagrees with the record "
+                 f"(flagged {p.get('living')})")
 
     # A marriage date identifies the living spouse just as well as a birth date.
     people = {p["id"]: p for p in data.get("people", [])}

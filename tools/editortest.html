@@ -1,0 +1,286 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PENDING</title>
+<!-- Browser test for the editor. Same-origin with docs/ when the repo root is
+     served. Drives the real editing UI and asserts the one invariant that
+     matters: a living person cannot acquire a name, a date or a place, by any
+     route, and nothing that would break it can be published.
+
+       python3 -m http.server 8199
+       google-chrome --headless=new --disable-gpu --virtual-time-budget=25000 \
+         --dump-dom http://127.0.0.1:8199/tools/editortest.html | grep -o '<title>[^<]*'
+-->
+<iframe id="f" src="../docs/index.html" style="width:1400px;height:900px;border:0"></iframe>
+<pre id="log"></pre>
+<script>
+const results = [];
+const ok = (name, cond, extra = '') =>
+  results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ' :: ' + extra : ''}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function click(el, win) {
+  el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+}
+function typeInto(input, win, value) {
+  input.value = value;
+  input.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+
+(async function run() {
+  const frame = document.getElementById('f');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+
+  // Editing must never be the default: a visitor gets the read-only tree.
+  win.localStorage.clear();
+  win.sessionStorage.clear();
+
+  for (let i = 0; i < 100 && !doc.querySelector('.node'); i++) await sleep(50);
+  for (let i = 0; i < 100 && !win.Editor; i++) await sleep(50);
+
+  const E = win.Editor;
+  const T = win.Tree;
+  ok('editor loaded', !!E && !!T);
+  ok('edit bar hidden until asked', doc.getElementById('editbar').hidden);
+  ok('panel is read-only by default', T.onPanel === null);
+
+  const before = T.data.people.length;
+
+  // ── enter edit mode ───────────────────────────────────────────────────────
+  click(doc.getElementById('edit-toggle'), win);
+  await sleep(60);
+  ok('edit bar appears', !doc.getElementById('editbar').hidden);
+  ok('publish disabled with no changes', doc.getElementById('btn-publish').disabled);
+
+  // ── edit a deceased person: full detail allowed ───────────────────────────
+  const dead = T.data.people.find((p) => !p.living);
+  T.select(dead.id);
+  await sleep(60);
+  const body = doc.getElementById('panel-body');
+  ok('deceased form offers given names', !!body.querySelector('#f-given'));
+  ok('deceased form offers occupation', !!body.querySelector('#f-occupation'));
+
+  typeInto(body.querySelector('#f-occupation'), win, 'kalastaja');
+  await sleep(80);
+  ok('an edit is recorded',
+     T.data.people.find((p) => p.id === dead.id).occupation === 'kalastaja');
+  ok('publish enabled once dirty', !doc.getElementById('btn-publish').disabled);
+
+  // ── a living person's form must not offer the forbidden fields ────────────
+  const living = T.data.people.find((p) => p.living);
+  T.select(living.id);
+  await sleep(60);
+  ok('living form hides given names', !body.querySelector('#f-given'));
+  ok('living form hides occupation', !body.querySelector('#f-occupation'));
+  ok('living form hides notes', !body.querySelector('#f-notes'));
+  ok('living form hides birth place', !body.querySelector('#f-birthPlace'));
+  ok('living form explains why', !!body.querySelector('.redacted'));
+  ok('living surname is editable', !!body.querySelector('#f-surname'));
+
+  // ── the invariant: a recent birth date cannot unlock detail ───────────────
+  typeInto(body.querySelector('#f-birthDate'), win, '14 MAR 2019');
+  await sleep(90);
+  const after = T.data.people.find((p) => p.id === living.id);
+  ok('a recent birth date does not store a birth record', after.birth === null,
+     JSON.stringify(after.birth));
+  ok('person stays living after a recent birth date', after.living === true);
+  ok('name stays masked', /^Living\b/.test(after.name));
+
+  // ── recording a death is what unlocks detail, and only then ───────────────
+  T.select(living.id);
+  await sleep(60);
+  typeInto(doc.getElementById('f-deathDate'), win, '3 MAR 2024');
+  await sleep(90);
+  const now = T.data.people.find((p) => p.id === living.id);
+  ok('a death date makes the person deceased', now.living === false);
+  T.select(living.id);
+  await sleep(60);
+  ok('given names appear once deceased', !!doc.getElementById('f-given'));
+
+  // Undo it: back to living, and the detail must vanish again.
+  typeInto(doc.getElementById('f-deathDate'), win, '');
+  await sleep(90);
+  T.select(living.id);
+  await sleep(60);
+  const back = T.data.people.find((p) => p.id === living.id);
+  ok('clearing the death date returns them to living', back.living === true);
+  ok('detail is stripped on the way back', !back.death && !back.given && !back.occupation);
+
+  // ── adding relatives, including ancestors ─────────────────────────────────
+  const root = T.data.people.slice().sort((a, b) => a.generation - b.generation)[0];
+  const genBefore = Math.max(...T.data.people.map((p) => p.generation));
+  T.select(root.id);
+  await sleep(60);
+  click([...doc.querySelectorAll('[data-add]')].find((b) => b.dataset.add === 'father'), win);
+  await sleep(120);
+  ok('adding a father adds a person', T.data.people.length === before + 1);
+  const genAfter = Math.max(...T.data.people.map((p) => p.generation));
+  ok('the tree grew a generation upward', genAfter === genBefore + 1,
+     `${genBefore} -> ${genAfter}`);
+
+  const father = T.data.people.find((p) => p.generation === 0 && p.id !== root.id);
+  ok('a new ancestor starts out living (no dates known)',
+     T.data.people.some((p) => p.living && p.id !== root.id));
+
+  T.select(root.id);
+  await sleep(60);
+  click([...doc.querySelectorAll('[data-add]')].find((b) => b.dataset.add === 'child'), win);
+  await sleep(120);
+  ok('adding a child adds a person', T.data.people.length === before + 2);
+
+  T.select(root.id);
+  await sleep(60);
+  click([...doc.querySelectorAll('[data-add]')].find((b) => b.dataset.add === 'sibling'), win);
+  await sleep(120);
+  ok('adding a sibling adds a person', T.data.people.length === before + 3);
+  ok('every card still renders', doc.querySelectorAll('.node').length === before + 3);
+
+  // ── undo ──────────────────────────────────────────────────────────────────
+  click(doc.getElementById('btn-undo'), win);
+  await sleep(120);
+  ok('undo removes the last addition', T.data.people.length === before + 2);
+
+  // ── naming an ancestor whose dates are unknown ────────────────────────────
+  // This is the workflow the whole feature exists for, and the plain rule
+  // ("no death record means living") would otherwise forbid it.
+  const anc = T.data.people.find((p) => p.living && p.generation === 0);
+  T.select(anc.id);
+  await sleep(60);
+  const assertBox = doc.getElementById('f-deathAsserted');
+  ok('an undated ancestor offers the deceased-date-unknown tick', !!assertBox);
+
+  assertBox.checked = true;
+  assertBox.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(100);
+  const asserted = T.data.people.find((p) => p.id === anc.id);
+  ok('asserting a death makes them deceased', asserted.living === false);
+  ok('the assertion carries no invented date',
+     asserted.death && asserted.death.asserted === true && !asserted.death.date);
+
+  T.select(anc.id);
+  await sleep(60);
+  ok('now the ancestor can be named', !!doc.getElementById('f-given'));
+  typeInto(doc.getElementById('f-given'), win, 'Matti Aaponpoika');
+  typeInto(doc.getElementById('f-surname'), win, 'Vanhatalo');
+  await sleep(100);
+  const named = T.data.people.find((p) => p.id === anc.id);
+  ok('the ancestor keeps the name given', named.name === 'Matti Aaponpoika Vanhatalo',
+     named.name);
+  ok('their card says the date is unknown, not that it is missing',
+     [...doc.querySelectorAll('.node .dt')].some((n) => n.textContent === 'died, date unknown'));
+
+  // Untick: the name must vanish again, because they are living once more.
+  T.select(anc.id);
+  await sleep(60);
+  const box2 = doc.getElementById('f-deathAsserted');
+  box2.checked = false;
+  box2.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(100);
+  const reverted = T.data.people.find((p) => p.id === anc.id);
+  ok('unticking returns them to living', reverted.living === true);
+  ok('and takes the name back off', !reverted.given && /^Living\b/.test(reverted.name));
+
+  // Put it back so the payload checks below have a named ancestor in them.
+  T.select(anc.id);
+  await sleep(60);
+  const box3 = doc.getElementById('f-deathAsserted');
+  box3.checked = true;
+  box3.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(100);
+
+  // ── the floor: order of entry must not let a child be published ───────────
+  // The dangerous sequence is the other way round from the obvious one: tick
+  // "deceased, date unknown" FIRST (which unlocks the fields), then type a
+  // recent birth date. A living person's birth date is scrubbed, so the guard
+  // has to live in the rule, not in the form.
+  const kid = T.data.people.find((p) => p.living && p.generation >= 3);
+  T.select(kid.id);
+  await sleep(60);
+  const kbox = doc.getElementById('f-deathAsserted');
+  kbox.checked = true;
+  kbox.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(100);
+  ok('ticking alone does make an undated person deceased',
+     T.data.people.find((p) => p.id === kid.id).living === false);
+
+  T.select(kid.id);
+  await sleep(60);
+  typeInto(doc.getElementById('f-given'), win, 'Testinimi');
+  typeInto(doc.getElementById('f-birthDate'), win, '14 MAR 2019');
+  await sleep(120);
+  const kidNow = T.data.people.find((p) => p.id === kid.id);
+  ok('a recent birth date overrides the bare assertion', kidNow.living === true);
+  ok('and the name typed under it is stripped', !kidNow.given, kidNow.given);
+  ok('and no birth record survives', !kidNow.birth, JSON.stringify(kidNow.birth));
+  ok('their card is masked again', /^Living\b/.test(kidNow.name));
+
+  // A real death date, by contrast, is a specific claim and is honoured.
+  T.select(kid.id);
+  await sleep(60);
+  typeInto(doc.getElementById('f-deathDate'), win, '4 JAN 2024');
+  await sleep(120);
+  ok('a dated death is still honoured for anyone',
+     T.data.people.find((p) => p.id === kid.id).living === false);
+  T.select(kid.id);
+  await sleep(60);
+  typeInto(doc.getElementById('f-deathDate'), win, '');
+  await sleep(120);
+  ok('clearing it returns them to living and bare',
+     T.data.people.find((p) => p.id === kid.id).living === true
+     && !T.data.people.find((p) => p.id === kid.id).given);
+
+  // ── the payload that would be published ───────────────────────────────────
+  const payload = E.buildPayload();
+  ok('payload is flagged redacted', payload.redacted === true);
+  ok('payload is flagged browser-edited', payload.editedInBrowser === true);
+
+  const leaks = payload.people.filter((p) => p.living).filter((p) =>
+    p.given || p.married || p.nick || p.occupation || p.geniId
+    || p.birth || p.death || p.burial
+    || (p.aka || []).length || (p.notes || []).length);
+  ok('no living person in the payload carries data', leaks.length === 0,
+     leaks.map((p) => p.id).join(','));
+  ok('verify() passes on a clean payload', E.verify(payload).length === 0,
+     E.verify(payload).slice(0, 2).join(' | '));
+
+  // ── verify() must actually catch a violation, not just pass ───────────────
+  const tampered = JSON.parse(JSON.stringify(payload));
+  const victim = tampered.people.find((p) => p.living);
+  victim.given = 'Smuggled';
+  victim.birth = { date: { source: '14 MAR 2019', display: '1 December 2021',
+                           year: 2021, precision: 'day' }, place: 'Tampere', asserted: false };
+  const caught = E.verify(tampered);
+  ok('verify() catches smuggled given names', caught.some((m) => /given/.test(m)));
+  ok('verify() catches smuggled birth records', caught.some((m) => /birth/.test(m)));
+
+  const broken = JSON.parse(JSON.stringify(payload));
+  broken.people[0].parentFamily = '@NOPE@';
+  ok('verify() catches a dangling family pointer',
+     E.verify(broken).some((m) => /does not exist/.test(m)));
+
+  // ── UTF-8 commit encoding: btoa() alone would throw on ä/ö ────────────────
+  let encoded = null, threw = null;
+  try { encoded = win.btoa(unescape(encodeURIComponent(JSON.stringify(payload)))); }
+  catch (e) { threw = e.message; }
+  ok('payload with Finnish characters is encodable', !!encoded && !threw, threw || '');
+  ok('payload really does contain non-ASCII',
+     /[äöÄÖ]/.test(JSON.stringify(payload)));
+
+  // ── a draft survives a reload ─────────────────────────────────────────────
+  ok('draft was written to localStorage',
+     !!win.localStorage.getItem('familyArchive.draft.v1'));
+
+  // ── no token was needed to get this far, and none was stored ──────────────
+  ok('no token stored by merely editing',
+     !win.localStorage.getItem('familyArchive.token.v1')
+     && !win.sessionStorage.getItem('familyArchive.token.v1'));
+
+  document.getElementById('log').textContent = results.join('\n');
+  const failed = results.filter((r) => r.startsWith('FAIL')).length;
+  document.title = `DONE ${results.length - failed}/${results.length}`;
+})().catch((e) => {
+  document.getElementById('log').textContent = 'THREW: ' + e.stack;
+  document.title = 'THREW';
+});
+</script>

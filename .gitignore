@@ -59,3 +59,11 @@ data/media/
 /data/
 docs/data/tree.private.json
 *.ged
+
+# Family photographs, dropped into the repo root but NOT published. Publishing
+# images is a separate decision from publishing the tree, and it has not been
+# made. Note that a path can leak as surely as a file: one of these folders is
+# named after a living person, so even the directory listing would have to be
+# reworked before any of this could ship.
+/Family photos/
+/media/

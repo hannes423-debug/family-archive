@@ -327,8 +327,10 @@ function render(layout) {
     make('text', { class: 'gv', x: 16, y: 46 }, g)
       .textContent = p.living ? 'living' : fit(p.given || '', 26);
 
+    const deathOnly = !p.living && p.death && p.death.asserted && !lifeYears(p);
     make('text', { class: 'dt', x: 16, y: 66 }, g)
-      .textContent = p.living ? 'details withheld' : (lifeYears(p) || 'dates unknown');
+      .textContent = p.living ? 'details withheld'
+        : (lifeYears(p) || (deathOnly ? 'died, date unknown' : 'dates unknown'));
 
     if (p.living) {
       make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
@@ -499,8 +501,7 @@ function relatedTo(id) {
   return set;
 }
 
-function select(id, { centre = false } = {}) {
-  selectedId = id;
+function highlightSelection(id) {
   const kin = relatedTo(id);
 
   for (const node of gNodes.children) {
@@ -519,8 +520,12 @@ function select(id, { centre = false } = {}) {
     if (!link.dataset.family) continue;
     link.classList.toggle('highlight', fams.has(link.dataset.family));
   }
+}
 
-  showPanel(p);
+function select(id, { centre = false } = {}) {
+  selectedId = id;
+  highlightSelection(id);
+  showPanel(P.get(id));
   if (centre) centreOn(id, Math.max(view.k, 0.75));
   hideHint();
 }
@@ -596,6 +601,13 @@ function listSection(title, ids) {
 function showPanel(p) {
   const panel = el('panel');
   const body = el('panel-body');
+
+  // In edit mode the editor renders the panel instead of this read-only view.
+  if (window.Tree && typeof window.Tree.onPanel === 'function'
+      && window.Tree.onPanel(p, panel, body)) {
+    return;
+  }
+
   const out = [];
 
   out.push(`<h2>${esc(p.name)}</h2>`);
@@ -730,6 +742,112 @@ function wireSearch() {
 
 // ── boot ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Assign a generation index across the whole graph: parents one less than
+ * their children, spouses equal. A mirror of assign_generations() in
+ * tools/build_site.py, needed here because a structural edit in the browser
+ * changes the answer and there is no server to recompute it.
+ */
+function assignGenerations() {
+  const gen = new Map();
+  const remaining = new Set(P.keys());
+
+  while (remaining.size) {
+    const seed = [...remaining].sort()[0];
+    gen.set(seed, 0);
+    let frontier = [seed];
+    while (frontier.length) {
+      const next = [];
+      for (const pid of frontier) {
+        const g = gen.get(pid);
+        const p = P.get(pid);
+        for (const fid of p.spouseFamilies) {
+          const fam = F.get(fid);
+          if (!fam) continue;
+          for (const other of [fam.husband, fam.wife]) {
+            if (other && !gen.has(other)) { gen.set(other, g); next.push(other); }
+          }
+          for (const child of fam.children) {
+            if (!gen.has(child)) { gen.set(child, g + 1); next.push(child); }
+          }
+        }
+        const fam = F.get(p.parentFamily);
+        if (fam) {
+          for (const parent of [fam.husband, fam.wife]) {
+            if (parent && !gen.has(parent)) { gen.set(parent, g - 1); next.push(parent); }
+          }
+          for (const sib of fam.children) {
+            if (!gen.has(sib)) { gen.set(sib, g); next.push(sib); }
+          }
+        }
+      }
+      frontier = next;
+    }
+    for (const id of gen.keys()) remaining.delete(id);
+  }
+
+  const base = Math.min(...gen.values());
+  for (const [pid, g] of gen) P.get(pid).generation = g - base;
+}
+
+/** Re-derive everything from DATA and repaint. Safe to call after any edit. */
+function rebuild({ keepView = true, repaintPanel = true } = {}) {
+  // Children render in the order the family lists them, so an explicit order
+  // survives a reload. Birth order is a property of the family record, not a
+  // personal detail, which is why it is safe to keep even for living people.
+  for (const f of DATA.families) {
+    if (Array.isArray(f.childOrder) && f.childOrder.length) {
+      const rank = new Map(f.childOrder.map((id, i) => [id, i]));
+      f.children.sort((a, b) =>
+        (rank.has(a) ? rank.get(a) : 1e9) - (rank.has(b) ? rank.get(b) : 1e9));
+    }
+  }
+
+  index(DATA);
+  assignGenerations();
+  buildUnits();
+  const l = layout();
+  const view0 = { ...view };
+  BOUNDS = render(l);
+  if (keepView) { Object.assign(view, view0); applyView(); } else { fitView(); }
+
+  DATA.stats = {
+    people: DATA.people.length,
+    families: DATA.families.length,
+    living: DATA.people.filter((p) => p.living).length,
+    redacted: DATA.people.filter((p) => p.living).length,
+    generations: DATA.people.length
+      ? Math.max(...DATA.people.map((p) => p.generation)) + 1 : 0,
+  };
+  updateSubtitle();
+  // Repainting the panel rebuilds its form controls, which would steal focus
+  // mid-edit — so a field change asks for the tree to update but not the form.
+  if (repaintPanel && selectedId && P.has(selectedId)) {
+    select(selectedId, { centre: false });
+  } else if (selectedId && P.has(selectedId)) {
+    highlightSelection(selectedId);
+  }
+}
+
+function updateSubtitle() {
+  const s = DATA.stats;
+  el('subtitle').textContent =
+    `${s.people} people · ${s.families} families · ${s.generations} generations`
+    + (DATA.redacted ? ` · ${s.living} living kept private` : ' · UNREDACTED LOCAL BUILD');
+}
+
+// Surface for editor.js, which is a separate classic script. An explicit
+// object beats relying on cross-script access to top-level `let` bindings.
+window.Tree = {
+  get data() { return DATA; },
+  set data(v) { DATA = v; },
+  P, F, POS,
+  rebuild, select, clearSelection, showPanel, fitView, centreOn, highlightSelection,
+  lifeYears, eventLine, esc, linkify, personButton, listSection,
+  get selectedId() { return selectedId; },
+  onPanel: null,   // editor.js installs a renderer here
+};
+
 (async function main() {
   try {
     DATA = await load();
@@ -744,10 +862,7 @@ function wireSearch() {
   const l = layout();
   BOUNDS = render(l);
 
-  const s = DATA.stats;
-  el('subtitle').textContent =
-    `${s.people} people · ${s.families} families · ${s.generations} generations`
-    + (DATA.redacted ? ` · ${s.redacted} living kept private` : ' · UNREDACTED LOCAL BUILD');
+  updateSubtitle();
   if (!DATA.redacted) {
     el('privacy-note').innerHTML =
       '<strong>Local build — shows living people in full. Do not share.</strong>';
@@ -759,4 +874,9 @@ function wireSearch() {
   wireSearch();
   fitView();
   setTimeout(hideHint, 6000);
+
+  // editor.js is a separate script and may parse either side of this point,
+  // so announce readiness both ways rather than depending on the order.
+  window.Tree.ready = true;
+  window.dispatchEvent(new CustomEvent('tree-ready'));
 })();

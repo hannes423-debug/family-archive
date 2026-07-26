@@ -24,6 +24,13 @@ OUT_DIR = os.path.join(ROOT, "docs", "data")
 # Anyone below it, and anyone with no dates at all, counts as living.
 PRESUMED_DEAD_AFTER_YEARS = 100
 
+# A death asserted with no date (a bare DEAT tag valued Y) is trusted for an
+# ancestor, but it
+# must not outrank a birth this recent — otherwise asserting a death and then
+# recording a birth year would publish a child. Mirrors ASSERTION_FLOOR_YEARS
+# in docs/editor.js; the two must not drift.
+ASSERTION_FLOOR_YEARS = 25
+
 MONTHS = {m: i for i, m in enumerate(
     "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(), 1)}
 MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June",
@@ -258,16 +265,24 @@ def build(ged_path, this_year):
 
 
 def mark_living(people, this_year):
-    """A death or burial record proves death. Otherwise a birth long enough ago
-    presumes it. Everyone else — including everyone with no dates at all — is
-    treated as living, because guessing wrong in that direction is the one that
-    publishes a real person's data."""
+    """A dated death proves death. An undated one is trusted unless the person
+    was born recently. Otherwise a birth long enough ago presumes it. Everyone
+    else — including everyone with no dates at all — is treated as living,
+    because guessing wrong in that direction is the one that publishes a real
+    person's data."""
     for p in people.values():
-        if p["death"] or p["burial"]:
+        byear = (p["birth"] or {}).get("date") or {}
+        byear = byear.get("year")
+        born_recently = bool(byear) and (this_year - byear) < ASSERTION_FLOOR_YEARS
+
+        dated_death = ((p["death"] or {}).get("date")
+                       or (p["burial"] or {}).get("date"))
+        if dated_death:
             p["living"] = False
             continue
-        byear = (p["birth"] or {}).get("date", {})
-        byear = byear.get("year") if byear else None
+        if (p["death"] or p["burial"]) and not born_recently:
+            p["living"] = False
+            continue
         p["living"] = not (byear and this_year - byear >= PRESUMED_DEAD_AFTER_YEARS)
 
 
@@ -363,11 +378,30 @@ def main():
                     help="emit unredacted data to tree.private.json (never commit it)")
     ap.add_argument("--year", type=int, default=datetime.date.today().year,
                     help="reference year for the presumed-death rule")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite even if the tree was edited in the browser")
     args = ap.parse_args()
 
     if not os.path.exists(args.gedcom):
         sys.exit(f"no such GEDCOM: {args.gedcom}\n"
                  "The source data is gitignored — it is not in a fresh clone by design.")
+
+    # Since the browser editor landed, docs/data/tree.json is the source of
+    # truth for the published tree, not a derived artifact. Regenerating from
+    # the GEDCOM would silently throw away everything edited on the web, so it
+    # has to be asked for explicitly.
+    existing = os.path.join(OUT_DIR, "tree.json")
+    if os.path.exists(existing) and not args.force:
+        try:
+            with open(existing, encoding="utf-8") as fh:
+                if json.load(fh).get("editedInBrowser"):
+                    sys.exit(
+                        "REFUSING TO OVERWRITE: docs/data/tree.json has been edited in the\n"
+                        "browser since it was generated. Regenerating would discard those\n"
+                        "edits. Pull the current file first, or pass --force if you really\n"
+                        "mean to rebuild from the GEDCOM and lose them.")
+        except (ValueError, OSError):
+            pass
 
     people, families = build(args.gedcom, args.year)
     living = sum(1 for p in people.values() if p["living"])
