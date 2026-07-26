@@ -1,0 +1,27 @@
+# People who appear in published material but are not (yet) in the tree.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# verify_public.py cross-checks everything committed against the given names of
+# living people, so that a name cannot reach the public repo by some path the
+# redaction does not cover. Names repeat across generations, so that check has
+# to know which repetitions are safe.
+#
+# It learns most of them from the tree itself: a name also borne by someone the
+# tree records as deceased identifies nobody new. But a photograph can be of
+# somebody who is not in the tree at all — a great-great-grandmother whose
+# gravestone survives but whose record has not been entered yet — and that name
+# has nowhere to be declared. This is that place.
+#
+# Every line is a claim that this person has died, with the evidence for it.
+# Do not add a living person here to silence a warning; that is precisely the
+# check this file is weakening, and the whole point is that the weakening is
+# written down where it can be read.
+#
+# Format:  Full name | birth-death | evidence
+# Blank lines and lines starting with # are ignored.
+
+Briitta Liisa Matintytär Talvensaari | 1875-1952 | Portrait photograph, dates on the file; predates the living namesake by two generations
+Matti Autioniemi                     | 1851-1930 | Published death notice, 1930
+Kalle Kaakkurivaara                  | 1856-1929 | Gravestone, Kemijärvi
+Amanda Serafiina Sipovaara           | 1876-1960 | Gravestone, Kemijärvi (stone reads "Amanda Serefia o.s. Perälä" — maiden name needs checking)

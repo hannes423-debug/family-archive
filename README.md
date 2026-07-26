@@ -160,6 +160,21 @@ birth or death year against the tree, and writes the links into
 `person.media`. After that, attachments are yours to change in the browser —
 open someone in edit mode and tick the photographs that are of them.
 
+### Naming someone who is not in the tree
+
+A photograph can be of a great-great-grandmother whose gravestone survives but
+whose record has not been entered yet — and the leak check, which learns safe
+names from the tree, has no way to know she is dead. Worse, first names repeat
+across generations: the portrait of *Briitta Liisa Matintytär Talvensaari
+(1875–1952)* shares a given name with a living relative two generations later,
+and the check rightly stopped the push.
+
+`tools/known-deceased.txt` is where that gets declared, in the open, with the
+evidence. Each line is validated rather than trusted: it must carry a death year,
+that year must be at least 25 years ago, and it must cite evidence. It is not a
+way to silence a warning — it is a written record of every place the check was
+deliberately relaxed and why.
+
 Photographs follow the same rule as everything else: **only people the archive
 treats as deceased can be pictured.** The editor does not offer the list for a
 living person, `scrub()` clears `media` alongside every other field, and

@@ -11,7 +11,8 @@ Exit status is non-zero on any finding, so it can gate the Pages deploy.
 """
 import datetime, json, os, re, subprocess, sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE_TOOLS = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE_TOOLS)
 TREE = os.path.join(ROOT, "docs", "data", "tree.json")
 PRIVATE = os.path.join(ROOT, "docs", "data", "tree.private.json")
 
@@ -24,6 +25,12 @@ GEDCOM_LINE = re.compile(
 
 TEXT_SUFFIXES = (".py", ".js", ".html", ".css", ".json", ".md", ".yml", ".yaml",
                  ".txt", ".ged")
+
+KNOWN_DECEASED = os.path.join(HERE_TOOLS, "known-deceased.txt")
+
+# A declared death must be old enough that the person cannot plausibly be the
+# living namesake the check is protecting.
+DECLARATION_MIN_AGE_YEARS = 25
 
 # Fields that must be absent for anyone flagged living. Kept in sync with
 # build_site.PUBLIC_FIELDS_FOR_LIVING by this check failing loudly if it drifts.
@@ -114,6 +121,45 @@ def check_no_gedcom_content_in_tracked_files():
             continue
 
 
+def declared_deceased():
+    """Names declared deceased in tools/known-deceased.txt, with their evidence.
+
+    Each declaration is validated rather than trusted: it must carry a death
+    year, and one old enough that the person cannot be the living namesake.
+    """
+    tokens, problems = set(), []
+    if not os.path.exists(KNOWN_DECEASED):
+        return tokens, problems
+
+    this_year = datetime.date.today().year
+    with open(KNOWN_DECEASED, encoding="utf-8") as fh:
+        for num, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) < 3:
+                problems.append(f"known-deceased.txt:{num}: expected "
+                                f"'name | birth-death | evidence'")
+                continue
+            name, dates, evidence = parts[0], parts[1], parts[2]
+            m = re.search(r"(\d{4})\s*$", dates.split("-")[-1].strip())
+            if not m:
+                problems.append(f"known-deceased.txt:{num}: no death year in {dates!r}")
+                continue
+            death_year = int(m.group(1))
+            if this_year - death_year < DECLARATION_MIN_AGE_YEARS:
+                problems.append(
+                    f"known-deceased.txt:{num}: {name} died {death_year}, too "
+                    f"recent to declare this way")
+                continue
+            if not evidence:
+                problems.append(f"known-deceased.txt:{num}: {name} has no evidence")
+                continue
+            tokens.update(t for t in name.split() if len(t) > 3)
+    return tokens, problems
+
+
 def check_no_living_names_in_tracked_files():
     """Cross-check against the real answer, when the real answer is available.
 
@@ -137,6 +183,14 @@ def check_no_living_names_in_tracked_files():
             continue
         for field in ("given", "surname", "married", "nick"):
             public_tokens.update((p.get(field) or "").split())
+
+    # ...plus anyone declared deceased who is not in the tree yet.
+    declared, declaration_problems = declared_deceased()
+    for problem in declaration_problems:
+        fail(problem)
+    public_tokens |= declared
+    if declared:
+        print(f"  {len(declared)} token(s) covered by tools/known-deceased.txt")
 
     needles = set()
     for p in private.get("people", []):
