@@ -1,9 +1,13 @@
 # Raw captures of historical records, where every name is necessarily historical.
 #
 # The leak check matches given names against living relatives, and a parish
-# register from the 1820s is full of Johannes, Matias, Kaarlo and the rest. It
-# would be absurd to declare each one individually, and worse than absurd to
-# simply exempt the file — an exemption nobody verifies is how these things rot.
+# register from the 1820s is full of the same handful of Finnish given names
+# that are still in use today. Declaring each occurrence individually would be
+# absurd, and simply exempting the file would be worse than absurd — an
+# exemption nobody verifies is how these things quietly rot.
+#
+# (Note the trap this file itself fell into: naming an example given name in
+# this comment tripped the very check it describes.)
 #
 # So the claim is made checkable: a file listed here must contain no year at or
 # after its stated cutoff. If a later date ever appears, the file stops being a

@@ -211,7 +211,8 @@ known only as somebody's parent, with no record of their death but no
 possibility of their being alive.
 
 `tools/historical-sources.txt` handles the other case: a raw transcription of a
-parish register is full of Johannes and Matias and Kaarlo, and declaring each one
+parish register is full of the same handful of Finnish given names, repeated
+across every generation including the living one, and declaring each occurrence
 individually would be absurd. Instead a file is declared historical with a
 cutoff year, and **the claim is checked** — the file must contain no date at or
 after that year. Add one modern date and the exemption revokes itself and the
