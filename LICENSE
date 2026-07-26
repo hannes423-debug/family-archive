@@ -1,0 +1,38 @@
+This repository contains two different things under two different terms.
+
+────────────────────────────────────────────────────────────────────────────
+1. THE SOFTWARE — everything under site/ and tools/, and the documentation
+   under docs/.
+
+MIT License
+
+Copyright (c) 2026 hannes423-debug
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+────────────────────────────────────────────────────────────────────────────
+2. THE FAMILY DATA — the genealogical content, including site/data/tree.json
+   and anything derived from the family's records.
+
+Not licensed for reuse. It is one family's personal record, published here in
+a deliberately reduced form so that relatives can read it. It is not a dataset.
+
+Please do not scrape it, republish it, or ingest it into a genealogy service,
+a training corpus, or any other aggregation. If you are related and want a
+copy, ask — that is a much better route than copying this one.

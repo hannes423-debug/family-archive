@@ -1,0 +1,61 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+dist-ssr/
+build/
+*.local
+
+# test / coverage
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# editor & OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.swp
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# secrets — GitHub PATs live here, never commit them
+.env
+.env.*
+!.env.example
+*.pat
+*.token
+
+# large media — see docs/ARCHITECTURE.md (tiered git + Release assets, not LFS)
+data/media/
+*.mp4
+*.mov
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVATE SOURCE DATA — this repository is PUBLIC (GitHub Pages serves from it).
+#
+# data/ holds the raw genealogical source: full names, exact dates of birth and
+# birth places for people who are alive, including minors, plus curation notes
+# about a disputed paternity. None of it may ever enter a public commit.
+#
+# What ships instead is docs/data/tree.json, produced by tools/build_site.py,
+# which redacts every living person down to a surname. If you need the
+# unredacted build, run the generator with --include-living and DO NOT commit
+# the result — it is covered by the docs/data/tree.private.json rule below.
+# ─────────────────────────────────────────────────────────────────────────────
+# Leading slash matters: an unanchored "data/" would also match docs/data/,
+# which is the generated public payload that has to ship.
+/data/
+docs/data/tree.private.json
+*.ged
