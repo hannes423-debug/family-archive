@@ -1,0 +1,14 @@
+# Raw captures of historical records, where every name is necessarily historical.
+#
+# The leak check matches given names against living relatives, and a parish
+# register from the 1820s is full of Johannes, Matias, Kaarlo and the rest. It
+# would be absurd to declare each one individually, and worse than absurd to
+# simply exempt the file — an exemption nobody verifies is how these things rot.
+#
+# So the claim is made checkable: a file listed here must contain no year at or
+# after its stated cutoff. If a later date ever appears, the file stops being a
+# historical capture and the exemption fails loudly.
+#
+# Format:  path | latest-year-allowed | what it is
+
+research/sources/hiski-raw.json | 1900 | HisKi capture, Kemijärvi parish books 1697-1862

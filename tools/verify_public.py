@@ -27,6 +27,7 @@ TEXT_SUFFIXES = (".py", ".js", ".html", ".css", ".json", ".md", ".yml", ".yaml",
                  ".txt", ".ged")
 
 KNOWN_DECEASED = os.path.join(HERE_TOOLS, "known-deceased.txt")
+HISTORICAL_SOURCES = os.path.join(HERE_TOOLS, "historical-sources.txt")
 
 # A declared death must be old enough that the person cannot plausibly be the
 # living namesake the check is protecting.
@@ -143,21 +144,84 @@ def declared_deceased():
                                 f"'name | birth-death | evidence'")
                 continue
             name, dates, evidence = parts[0], parts[1], parts[2]
-            m = re.search(r"(\d{4})\s*$", dates.split("-")[-1].strip())
-            if not m:
-                problems.append(f"known-deceased.txt:{num}: no death year in {dates!r}")
-                continue
-            death_year = int(m.group(1))
-            if this_year - death_year < DECLARATION_MIN_AGE_YEARS:
-                problems.append(
-                    f"known-deceased.txt:{num}: {name} died {death_year}, too "
-                    f"recent to declare this way")
-                continue
+
+            born = re.search(r"b~?(\d{4})", dates)
+            if born:
+                # Presumed deceased by age, the same rule the rest of the
+                # archive uses. For people known only as somebody's parent.
+                birth_year = int(born.group(1))
+                if this_year - birth_year < PRESUMED_DEAD_AFTER_YEARS:
+                    problems.append(
+                        f"known-deceased.txt:{num}: {name} born {birth_year} is "
+                        f"not old enough to presume deceased")
+                    continue
+            else:
+                m = re.search(r"(\d{4})\s*$", dates.split("-")[-1].strip())
+                if not m:
+                    problems.append(f"known-deceased.txt:{num}: no death year "
+                                    f"or birth year in {dates!r}")
+                    continue
+                death_year = int(m.group(1))
+                if this_year - death_year < DECLARATION_MIN_AGE_YEARS:
+                    problems.append(
+                        f"known-deceased.txt:{num}: {name} died {death_year}, too "
+                        f"recent to declare this way")
+                    continue
             if not evidence:
                 problems.append(f"known-deceased.txt:{num}: {name} has no evidence")
                 continue
             tokens.update(t for t in name.split() if len(t) > 3)
     return tokens, problems
+
+
+def historical_captures():
+    """Files that are raw transcriptions of historical records.
+
+    The claim is verified rather than trusted: the file must contain no year at
+    or after its declared cutoff. An exemption nobody checks is how this kind of
+    rule quietly stops meaning anything.
+    """
+    exempt, problems = set(), []
+    if not os.path.exists(HISTORICAL_SOURCES):
+        return exempt, problems
+
+    for num, line in enumerate(open(HISTORICAL_SOURCES, encoding="utf-8"), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 3:
+            problems.append(f"historical-sources.txt:{num}: expected "
+                            f"'path | year | description'")
+            continue
+        path, cutoff = parts[0], parts[1]
+        if not cutoff.isdigit():
+            problems.append(f"historical-sources.txt:{num}: {cutoff!r} is not a year")
+            continue
+        full = os.path.join(ROOT, path)
+        if not os.path.exists(full):
+            problems.append(f"historical-sources.txt:{num}: no such file: {path}")
+            continue
+        try:
+            body = open(full, encoding="utf-8").read()
+        except (UnicodeDecodeError, OSError) as exc:
+            problems.append(f"historical-sources.txt:{num}: cannot read {path}: {exc}")
+            continue
+        # Record identifiers look exactly like years — a HisKi row link ends in
+        # a bare number — so strip references before reading dates out, and
+        # bound the range to years that could actually be years.
+        prose = re.sub(r'"links"\s*:\s*\[[^\]]*\]', " ", body)
+        prose = re.sub(r"https?://\S+", " ", prose)
+        prose = re.sub(r"\S*/hiski\?\S*", " ", prose)
+        late = sorted({y for y in re.findall(r"\b(1[6-9]\d\d|20[0-3]\d)\b", prose)
+                       if int(y) >= int(cutoff)})
+        if late:
+            problems.append(
+                f"{path}: declared historical (pre-{cutoff}) but contains "
+                f"{', '.join(late[:5])} — it is not a historical capture")
+            continue
+        exempt.add(path)
+    return exempt, problems
 
 
 def check_no_living_names_in_tracked_files():
@@ -189,6 +253,12 @@ def check_no_living_names_in_tracked_files():
     for problem in declaration_problems:
         fail(problem)
     public_tokens |= declared
+
+    exempt_paths, capture_problems = historical_captures()
+    for problem in capture_problems:
+        fail(problem)
+    if exempt_paths:
+        print(f"  {len(exempt_paths)} verified historical capture(s) exempt")
     if declared:
         print(f"  {len(declared)} token(s) covered by tools/known-deceased.txt")
 
@@ -212,7 +282,7 @@ def check_no_living_names_in_tracked_files():
     if files is None:
         return
     for path in files:
-        if not path.endswith(TEXT_SUFFIXES):
+        if not path.endswith(TEXT_SUFFIXES) or path in exempt_paths:
             continue
         full = os.path.join(ROOT, path)
         if not os.path.exists(full):

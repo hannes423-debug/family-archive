@@ -204,10 +204,23 @@ across generations: the portrait of *Briitta Liisa Matintytär Talvensaari
 and the check rightly stopped the push.
 
 `tools/known-deceased.txt` is where that gets declared, in the open, with the
-evidence. Each line is validated rather than trusted: it must carry a death year,
-that year must be at least 25 years ago, and it must cite evidence. It is not a
-way to silence a warning — it is a written record of every place the check was
-deliberately relaxed and why.
+evidence. Each line is validated rather than trusted: it must cite evidence, and
+it must carry either a **death year at least 25 years past**, or a **birth year
+at least 100 years past** — the archive's own presumed-death rule, for people
+known only as somebody's parent, with no record of their death but no
+possibility of their being alive.
+
+`tools/historical-sources.txt` handles the other case: a raw transcription of a
+parish register is full of Johannes and Matias and Kaarlo, and declaring each one
+individually would be absurd. Instead a file is declared historical with a
+cutoff year, and **the claim is checked** — the file must contain no date at or
+after that year. Add one modern date and the exemption revokes itself and the
+file falls straight back to the normal name check. An exemption nobody verifies
+is how a rule like this quietly stops meaning anything.
+
+Both mechanisms exist because the check earns its keep: it has now stopped three
+real commits, including one where a test used a child's actual date of birth as
+sample data.
 
 Photographs follow the same rule as everything else: **only people the archive
 treats as deceased can be pictured.** The editor does not offer the list for a

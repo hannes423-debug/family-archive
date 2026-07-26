@@ -18,10 +18,18 @@
 # check this file is weakening, and the whole point is that the weakening is
 # written down where it can be read.
 #
-# Format:  Full name | birth-death | evidence
+# Format:  Full name | dates | evidence
+#
+# "dates" is either a death year at least 25 years past (e.g. 1875-1952, or
+# d1952), or a birth year at least 100 years past (e.g. b~1890). The second form
+# is the archive's own presumed-death rule, and exists for people who are known
+# only as somebody's parent — no record of their death, but no possibility of
+# their being alive either.
+#
 # Blank lines and lines starting with # are ignored.
 
 Briitta Liisa Matintytär Talvensaari | 1875-1952 | Portrait photograph, dates on the file; predates the living namesake by two generations
 Matti Autioniemi                     | 1851-1930 | Published death notice, 1930
 Kalle Kaakkurivaara                  | 1856-1929 | Gravestone, Kemijärvi
 Amanda Serafiina Sipovaara           | 1876-1960 | Gravestone, Kemijärvi (stone reads "Amanda Serefia o.s. Perälä" — maiden name needs checking)
+Matias Talvensaari                   | b~1890    | Father of Anna Emilia Matiaksentytär Talvensaari (b. 1917); known only from her patronymic. Presumed deceased under the 100-year rule
