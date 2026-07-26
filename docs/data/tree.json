@@ -169,7 +169,10 @@
     "@F6000000087380701042@"
    ],
    "living": false,
-   "generation": 1
+   "generation": 1,
+   "media": [
+    "hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+   ]
   },
   {
    "id": "@I6000000087429432922@",
@@ -215,7 +218,11 @@
     "@F6000000087380701042@"
    ],
    "living": false,
-   "generation": 1
+   "generation": 1,
+   "media": [
+    "hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg",
+    "janne-kaakkurivaara-1910-1959.jpg"
+   ]
   },
   {
    "id": "@I6000000186642517904@",

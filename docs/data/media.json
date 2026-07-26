@@ -1,0 +1,74 @@
+{
+ "generated": "2026-07-26T21:25:57+00:00",
+ "count": 7,
+ "items": [
+  {
+   "file": "matti-autioniemi-1851-1930-kuolinilmoitus.jpg",
+   "caption": "Matti Autioniemi 1851-1930 Kuolinilmoitus",
+   "kind": "document",
+   "kindLabel": "Death notice",
+   "group": null,
+   "bytes": 68902,
+   "suggestedFor": []
+  },
+  {
+   "file": "hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg",
+   "caption": "Hautakivi: Johan Aleksi Kaakkurivaara 1910-1959 & Anna Emilia (Talvensaari) 1917-1986",
+   "kind": "memorial",
+   "kindLabel": "Gravestone or memorial",
+   "group": "Äidin suku / Hautakivet & Muistot",
+   "bytes": 115047,
+   "suggestedFor": [
+    "@I6000000087381053877@",
+    "@I6000000087429432922@"
+   ]
+  },
+  {
+   "file": "hautakivi-kalle-kaakkurivaara-1856-1929-amanda-serafiina-sipovaara.jpg",
+   "caption": "Hautakivi Kalle Kaakkurivaara 1856-1929 & Amanda Serafiina Sipovaara",
+   "kind": "memorial",
+   "kindLabel": "Gravestone or memorial",
+   "group": "Äidin suku / Hautakivet & Muistot",
+   "bytes": 113832,
+   "suggestedFor": []
+  },
+  {
+   "file": "gallenius-2a-large.jpg",
+   "caption": "gallenius 2a large",
+   "kind": "photograph",
+   "kindLabel": "Photograph",
+   "group": null,
+   "bytes": 155171,
+   "suggestedFor": []
+  },
+  {
+   "file": "amanda-serafiina-sipovaara-1876-1960.jpg",
+   "caption": "Amanda Serafiina Sipovaara 1876-1960",
+   "kind": "portrait",
+   "kindLabel": "Portrait",
+   "group": "Äidin suku / Henkilökuvat",
+   "bytes": 4089,
+   "suggestedFor": []
+  },
+  {
+   "file": "briitta-liisa-matintytar-talvensaari-1875-1952.jpg",
+   "caption": "Briitta Liisa Matintytär Talvensaari 1875-1952",
+   "kind": "portrait",
+   "kindLabel": "Portrait",
+   "group": "Äidin suku / Henkilökuvat",
+   "bytes": 65805,
+   "suggestedFor": []
+  },
+  {
+   "file": "janne-kaakkurivaara-1910-1959.jpg",
+   "caption": "Janne Kaakkurivaara 1910-1959",
+   "kind": "portrait",
+   "kindLabel": "Portrait",
+   "group": "Äidin suku / Henkilökuvat",
+   "bytes": 78840,
+   "suggestedFor": [
+    "@I6000000087429432922@"
+   ]
+  }
+ ]
+}

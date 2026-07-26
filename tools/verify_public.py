@@ -29,7 +29,7 @@ TEXT_SUFFIXES = (".py", ".js", ".html", ".css", ".json", ".md", ".yml", ".yaml",
 # build_site.PUBLIC_FIELDS_FOR_LIVING by this check failing loudly if it drifts.
 FORBIDDEN_SCALARS = ("given", "married", "nick", "occupation", "geniId")
 FORBIDDEN_OBJECTS = ("birth", "death", "burial")
-FORBIDDEN_LISTS = ("aka", "notes")
+FORBIDDEN_LISTS = ("aka", "notes", "media")
 
 # Mirrors docs/editor.js and build_site.py. Anyone marked deceased must actually
 # satisfy the rule — a tree.json edited in the browser, or by hand, does not get
@@ -178,6 +178,45 @@ def check_no_living_names_in_tracked_files():
           f"{len(needles)} private tokens")
 
 
+def check_media():
+    """Photographs are published files, so they get the same rule as everything
+    else: attached only to people the archive treats as deceased, and every
+    reference must resolve to a file that actually exists."""
+    media_dir = os.path.join(ROOT, "docs", "media")
+    catalogue = os.path.join(ROOT, "docs", "data", "media.json")
+    if not os.path.exists(catalogue):
+        return
+
+    with open(catalogue, encoding="utf-8") as fh:
+        cat = json.load(fh)
+    on_disk = set(os.listdir(media_dir)) if os.path.isdir(media_dir) else set()
+
+    listed = set()
+    for item in cat.get("items", []):
+        listed.add(item["file"])
+        if item["file"] not in on_disk:
+            fail(f"media.json lists {item['file']} but the file is not in docs/media/")
+        # A path is published as surely as a file: keep them boring and ASCII.
+        if re.search(r"[^a-z0-9.\-]", item["file"]):
+            fail(f"{item['file']}: filename is not URL-safe lowercase ASCII")
+
+    for orphan in sorted(on_disk - listed):
+        fail(f"docs/media/{orphan} is published but not in the catalogue")
+
+    if not os.path.exists(TREE):
+        return
+    with open(TREE, encoding="utf-8") as fh:
+        tree = json.load(fh)
+    for p in tree.get("people", []):
+        for ref in p.get("media", []) or []:
+            if p.get("living"):
+                fail(f"{p.get('id')}: a living person has a photograph attached")
+            if ref not in listed:
+                fail(f"{p.get('name')}: references missing photograph {ref}")
+
+    print(f"  checked {len(listed)} photograph(s)")
+
+
 def check_tree_json():
     if not os.path.exists(TREE):
         fail("docs/data/tree.json is missing — the site would deploy empty")
@@ -233,6 +272,7 @@ def main():
     check_no_source_data_tracked()
     check_no_gedcom_content_in_tracked_files()
     check_tree_json()
+    check_media()
     check_no_living_names_in_tracked_files()
 
     if problems:

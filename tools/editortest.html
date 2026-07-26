@@ -230,6 +230,51 @@ function typeInto(input, win, value) {
      T.data.people.find((p) => p.id === kid.id).living === true
      && !T.data.people.find((p) => p.id === kid.id).given);
 
+  // ── attaching photographs ─────────────────────────────────────────────────
+  const cat = (T.media && T.media.items) || [];
+  if (cat.length) {
+    const subject = T.data.people.find((p) => !p.living);
+    T.select(subject.id);
+    await sleep(70);
+    const picks = [...doc.querySelectorAll('[data-media]')];
+    ok('a deceased person can be offered photographs', picks.length === cat.length,
+       `${picks.length} of ${cat.length}`);
+
+    const target = picks.find((b) => !b.checked);
+    const had = (T.data.people.find((p) => p.id === subject.id).media || []).length;
+    target.checked = true;
+    target.dispatchEvent(new win.Event('change', { bubbles: true }));
+    await sleep(110);
+    ok('ticking attaches the photograph',
+       (T.data.people.find((p) => p.id === subject.id).media || []).length === had + 1);
+
+    T.select(subject.id);
+    await sleep(70);
+    const untick = [...doc.querySelectorAll('[data-media]')]
+      .find((b) => b.dataset.media === target.dataset.media);
+    untick.checked = false;
+    untick.dispatchEvent(new win.Event('change', { bubbles: true }));
+    await sleep(110);
+    ok('unticking detaches it again',
+       (T.data.people.find((p) => p.id === subject.id).media || []).length === had);
+
+    // A living person is never offered the list at all.
+    const someoneLiving = T.data.people.find((p) => p.living);
+    T.select(someoneLiving.id);
+    await sleep(70);
+    ok('a living person is offered no photographs',
+       doc.querySelectorAll('[data-media]').length === 0);
+
+    // And a photograph forced onto one is caught before it can publish.
+    const rigged = JSON.parse(JSON.stringify(E.buildPayload()));
+    const victimId = rigged.people.find((p) => p.living).id;
+    rigged.people.find((p) => p.id === victimId).media = [cat[0].file];
+    ok('verify() catches a photograph on a living person',
+       E.verify(rigged).some((m) => /photograph/.test(m)));
+  } else {
+    ok('photograph catalogue present', false, 'no media.json loaded');
+  }
+
   // ── the payload that would be published ───────────────────────────────────
   const payload = E.buildPayload();
   ok('payload is flagged redacted', payload.redacted === true);

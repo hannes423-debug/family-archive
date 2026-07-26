@@ -557,3 +557,106 @@ body {
 .auth-card .btn-row { justify-content: flex-end; margin-top: 4px; }
 
 body.edit-mode .node { cursor: cell; }
+
+/* ── photographs ─────────────────────────────────────────────────────────── */
+
+.shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.shots.wide { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.shot { margin: 0; }
+.shot img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  cursor: zoom-in;
+}
+.shot img:hover { border-color: var(--accent); }
+.shot figcaption {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, .8);
+  z-index: 70;
+  overflow-y: auto;
+}
+.lightbox[hidden] { display: none; }
+.lightbox figure { margin: 0; max-width: min(1000px, 100%); text-align: center; }
+.lightbox img {
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.lightbox figcaption {
+  margin-top: 12px;
+  color: #e8e3da;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.lb-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.gallery {
+  width: min(1100px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 26px 28px 32px;
+  background: var(--paper);
+  border-radius: 12px;
+}
+.gallery h2 { margin: 0 0 4px; font-size: 21px; }
+.gallery h3 {
+  margin: 22px 0 10px;
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.gal-note { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+/* attach/detach list in the editor */
+.pick-list { display: grid; gap: 6px; }
+.pick {
+  display: grid;
+  grid-template-columns: auto 46px 1fr;
+  align-items: center;
+  gap: 9px;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.pick:hover { background: var(--accent-soft); }
+.pick img {
+  width: 46px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+}
+.pick span { overflow-wrap: anywhere; color: var(--ink-soft); }

@@ -75,8 +75,9 @@ asserting the privacy invariant structurally rather than against a list of names
   that no living person's data reaches the rendered output.
 - `tools/editortest.html` — the editor: every field the form must refuse, that
   status changes strip data in both directions, that adding relatives grows the
-  tree correctly, and that `verify()` catches a tampered payload rather than
-  merely passing a clean one.
+  tree correctly, that photographs can be attached only to the deceased, and
+  that `verify()` catches a tampered payload rather than merely passing a clean
+  one.
 
 ```bash
 python3 -m http.server 8123 &
@@ -84,8 +85,8 @@ for t in drivertest editortest; do
   google-chrome --headless=new --disable-gpu --virtual-time-budget=40000 \
     --dump-dom "http://127.0.0.1:8123/tools/$t.html" | grep -o '<title>[^<]*'
 done
-# -> DONE 25/25   (read-only view)
-# -> DONE 55/55   (editor)
+# -> DONE 35/35   (read-only view)
+# -> DONE 60/60   (editor)
 ```
 
 ---
@@ -138,6 +139,36 @@ and **Download** exports the file if you would rather commit it yourself.
 
 ---
 
+## Photographs
+
+Drop images anywhere under `Family photos/` — that folder is gitignored, so the
+originals keep their Finnish names and whatever structure suits you.
+
+```bash
+python3 tools/build_media.py             # dry run: what would be published
+python3 tools/build_media.py --write     # copy to docs/media/ + write the catalogue
+python3 tools/build_media.py --write --attach   # ...and seed the suggested links
+```
+
+Each image is copied to `docs/media/` under a rewritten URL-safe ASCII name and
+listed in `docs/data/media.json`. **The rename is a privacy measure, not
+tidiness**: a path is published as surely as the file it points at, and the
+original folders were named after a living relative.
+
+`--attach` guesses which people a photo belongs to by matching surname plus a
+birth or death year against the tree, and writes the links into
+`person.media`. After that, attachments are yours to change in the browser —
+open someone in edit mode and tick the photographs that are of them.
+
+Photographs follow the same rule as everything else: **only people the archive
+treats as deceased can be pictured.** The editor does not offer the list for a
+living person, `scrub()` clears `media` alongside every other field, and
+`verify_public.py` fails if a file is attached to a living person, if a
+reference points at a missing file, if a published image is missing from the
+catalogue, or if a filename is not URL-safe.
+
+---
+
 ## Deployment
 
 GitHub Pages serves `docs/` on the `main` branch directly — **Settings → Pages →
@@ -184,7 +215,9 @@ design/ARCHITECTURE.md  The full platform design — data model, sync, media,
                         auth, risks, and a 13-phase roadmap. Written before any
                         code, on purpose.
 docs/                   The published tree. Served by GitHub Pages as-is.
-tools/                  Redaction, verification, browser tests, parked workflow.
+tools/                  Redaction, media pipeline, verification, browser tests.
+Family photos/          Photograph drop folder. GITIGNORED — the originals stay
+                        out of git; rewritten copies ship in docs/media/.
 data/                   Private source genealogy, plus the curation scripts that
                         contain living people's names. GITIGNORED — never
                         committed, not present in any commit in this history.

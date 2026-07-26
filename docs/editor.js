@@ -141,6 +141,7 @@ function scrub(p) {
     given: '', married: '', nick: '', aka: [],
     birth: null, death: null, burial: null,
     occupation: null, notes: [], geniId: null,
+    media: [],   // a living person may not be pictured either
   });
   return p;
 }
@@ -160,6 +161,9 @@ function verify(data) {
     }
     if ((p.aka || []).length || (p.notes || []).length) {
       problems.push(`${p.name || p.id}: still carries aka/notes`);
+    }
+    if ((p.media || []).length) {
+      problems.push(`${p.name || p.id}: still has a photograph attached`);
     }
     if (!/^Living\b/.test(p.name || '')) {
       problems.push(`${p.id}: name is not masked (${p.name})`);
@@ -238,7 +242,7 @@ const newId = (kind) => `@${kind}W${(nextIdCounter++).toString(36).toUpperCase()
 function addPerson(fields = {}) {
   const p = Object.assign({
     id: newId('I'), given: '', surname: '', married: '', nick: '',
-    name: '', aka: [], sex: 'U',
+    name: '', aka: [], sex: 'U', media: [],
     birth: null, death: null, burial: null,
     occupation: null, notes: [], geniId: null,
     generation: 0, parentFamily: null, spouseFamilies: [],
@@ -462,6 +466,20 @@ function renderEditor(p, panel, body) {
     out.push('</section>');
   }
 
+  if (!living) {
+    const cat = (T.media && T.media.items) || [];
+    if (cat.length) {
+      const mine = new Set(p.media || []);
+      out.push('<section><h3>Photographs</h3><div class="pick-list">'
+        + cat.map((m) => `<label class="pick">
+             <input type="checkbox" data-media="${T.esc(m.file)}"
+                    ${mine.has(m.file) ? 'checked' : ''}>
+             <img src="./media/${T.esc(m.file)}" alt="" loading="lazy">
+             <span>${T.esc(m.caption)}</span></label>`).join('')
+        + '</div></section>');
+    }
+  }
+
   out.push(`<section><h3>Add a relative</h3><div class="btn-row">
       <button type="button" class="mini" data-add="father">+ Father</button>
       <button type="button" class="mini" data-add="mother">+ Mother</button>
@@ -486,6 +504,16 @@ function renderEditor(p, panel, body) {
   // Live-apply on every change, so there is no save button to forget.
   body.querySelectorAll('input, textarea, select').forEach((input) => {
     input.addEventListener('change', () => applyForm(p.id, body));
+  });
+  body.querySelectorAll('[data-media]').forEach((box) => {
+    box.addEventListener('change', () => {
+      commitChange(() => {
+        const person = T.data.people.find((x) => x.id === p.id);
+        const set = new Set(person.media || []);
+        if (box.checked) set.add(box.dataset.media); else set.delete(box.dataset.media);
+        person.media = [...set];
+      }, { repaintPanel: false });
+    });
   });
   body.querySelectorAll('[data-add]').forEach((btn) => {
     btn.addEventListener('click', () => {

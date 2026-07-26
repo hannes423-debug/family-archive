@@ -168,6 +168,52 @@ function realClick(el, win) {
   ok('deceased people still show real detail',
      [...panel.querySelectorAll('dt')].some((d) => d.textContent === 'Born'));
 
+  // ── photographs ───────────────────────────────────────────────────────────
+  const T = win.Tree;
+  const media = T.media;
+  ok('the photograph catalogue loads', (media.items || []).length > 0,
+     `${(media.items || []).length} items`);
+  ok('a gallery button appears', !!doc.getElementById('gallery-btn'));
+
+  const withShots = payload.people.find((p) => (p.media || []).length);
+  ok('at least one person has a photograph', !!withShots);
+  if (withShots) {
+    T.select(withShots.id);
+    await sleep(80);
+    ok('the panel shows the photographs',
+       panel.querySelectorAll('.shot img').length === withShots.media.length);
+
+    realClick(panel.querySelector('.shot img'), win);
+    await sleep(80);
+    const lb = doc.getElementById('lightbox');
+    ok('clicking a photograph opens the lightbox', lb && !lb.hidden);
+    ok('the lightbox shows a full image', !!lb.querySelector('figure img'));
+    doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(60);
+    ok('escape closes the lightbox', doc.getElementById('lightbox').hidden);
+  }
+
+  realClick(doc.getElementById('gallery-btn'), win);
+  await sleep(100);
+  const gal = doc.querySelector('.gallery');
+  ok('the gallery lists every published photograph',
+     gal && gal.querySelectorAll('.shot img').length === media.items.length,
+     gal ? `${gal.querySelectorAll('.shot img').length}` : 'no gallery');
+  doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(60);
+
+  // No living person may be pictured, by any route.
+  ok('no living person has a photograph',
+     payload.people.filter((p) => p.living).every((p) => !(p.media || []).length));
+
+  // Every published image must actually load, not 404 into a broken icon.
+  let broken = 0;
+  for (const m of media.items) {
+    const r = await win.fetch('./media/' + m.file, { method: 'GET' });
+    if (!r.ok) broken++;
+  }
+  ok('every catalogued image is actually served', broken === 0, `${broken} missing`);
+
   document.getElementById('log').textContent = results.join('\n');
   const failed = results.filter((r) => r.startsWith('FAIL')).length;
   document.title = `DONE ${results.length - failed}/${results.length}`;

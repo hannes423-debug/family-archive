@@ -60,10 +60,9 @@ data/media/
 docs/data/tree.private.json
 *.ged
 
-# Family photographs, dropped into the repo root but NOT published. Publishing
-# images is a separate decision from publishing the tree, and it has not been
-# made. Note that a path can leak as surely as a file: one of these folders is
-# named after a living person, so even the directory listing would have to be
-# reworked before any of this could ship.
+# The photograph DROP FOLDER. What ships is not this: tools/build_media.py
+# copies each image into docs/media/ under a rewritten, URL-safe name and
+# catalogues it. The originals stay out of git, keeping their Finnish names and
+# whatever folder structure suits you — including folder names that would not
+# be safe to publish, since a path leaks as surely as a file does.
 /Family photos/
-/media/

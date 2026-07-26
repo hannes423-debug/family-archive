@@ -46,6 +46,23 @@ let selectedId = null;
 // simply 404s and it falls back to the public file.
 const wantsPrivate = new URLSearchParams(location.search).get('private') === '1';
 
+let MEDIA = { items: [] };
+
+/** The photograph catalogue. Optional: the tree renders fine without it. */
+async function loadMedia() {
+  try {
+    const res = await fetch('./data/media.json', { cache: 'no-cache' });
+    if (res.ok) MEDIA = await res.json();
+  } catch (_) { /* no photographs published yet */ }
+  MEDIA.byFile = new Map((MEDIA.items || []).map((m) => [m.file, m]));
+}
+
+/** Photographs attached to a person. Living people never have any. */
+function mediaFor(p) {
+  if (!p || p.living || !Array.isArray(p.media)) return [];
+  return p.media.map((f) => MEDIA.byFile.get(f)).filter(Boolean);
+}
+
 async function load() {
   const candidates = wantsPrivate
     ? ['./data/tree.private.json', './data/tree.json']
@@ -335,6 +352,9 @@ function render(layout) {
     if (p.living) {
       make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
         .textContent = '\u{1F512}';
+    } else if (mediaFor(p).length) {
+      make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
+        .textContent = '\u{1F5BC}';
     }
   }
 
@@ -658,6 +678,14 @@ function showPanel(p) {
   out.push(listSection('Children', p._children));
   out.push(listSection('Siblings', p._siblings));
 
+  const shots = mediaFor(p);
+  if (shots.length) {
+    out.push(`<section><h3>Photographs</h3><div class="shots">${
+      shots.map((m) => `<figure class="shot"><img src="./media/${esc(m.file)}"
+          alt="${esc(m.caption)}" loading="lazy" data-lightbox="${esc(m.file)}">
+        <figcaption>${esc(m.kindLabel)}</figcaption></figure>`).join('')}</div></section>`);
+  }
+
   if (p.notes && p.notes.length) {
     out.push(`<section><h3>Notes &amp; sources</h3>${
       p.notes.map((n) => `<p class="note-body">${linkify(n)}</p>`).join('')}</section>`);
@@ -676,6 +704,78 @@ function showPanel(p) {
   body.querySelectorAll('[data-goto]').forEach((btn) => {
     btn.addEventListener('click', () => select(btn.dataset.goto, { centre: true }));
   });
+  wireLightbox(body);
+}
+
+// ── photographs ──────────────────────────────────────────────────────────────
+
+function wireLightbox(scope) {
+  scope.querySelectorAll('[data-lightbox]').forEach((img) => {
+    img.addEventListener('click', () => openLightbox(img.dataset.lightbox));
+  });
+}
+
+function openLightbox(file) {
+  const item = MEDIA.byFile.get(file);
+  if (!item) return;
+  let box = el('lightbox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'lightbox';
+    box.className = 'lightbox';
+    document.body.appendChild(box);
+    box.addEventListener('click', (e) => {
+      if (e.target === box || e.target.closest('[data-close]')) closeLightbox();
+    });
+  }
+  box.innerHTML = `<figure>
+      <button type="button" class="lb-close" data-close aria-label="Close">×</button>
+      <img src="./media/${esc(item.file)}" alt="${esc(item.caption)}">
+      <figcaption><strong>${esc(item.kindLabel)}</strong> — ${esc(item.caption)}</figcaption>
+    </figure>`;
+  box.hidden = false;
+  document.addEventListener('keydown', lightboxKeys);
+}
+
+function closeLightbox() {
+  const box = el('lightbox');
+  if (box) box.hidden = true;
+  document.removeEventListener('keydown', lightboxKeys);
+}
+
+function lightboxKeys(e) { if (e.key === 'Escape') closeLightbox(); }
+
+/** Everything published, including photographs not yet tied to anyone. */
+function openGallery() {
+  let box = el('lightbox');
+  if (!box) { openLightbox((MEDIA.items[0] || {}).file); box = el('lightbox'); }
+  if (!box) return;
+
+  const attached = new Set();
+  for (const p of DATA.people) (p.media || []).forEach((f) => attached.add(f));
+
+  const card = (m) => `<figure class="shot">
+      <img src="./media/${esc(m.file)}" alt="${esc(m.caption)}" loading="lazy"
+           data-lightbox="${esc(m.file)}">
+      <figcaption>${esc(m.caption)}</figcaption></figure>`;
+
+  const loose = MEDIA.items.filter((m) => !attached.has(m.file));
+  box.innerHTML = `<div class="gallery">
+      <button type="button" class="lb-close" data-close aria-label="Close">×</button>
+      <h2>Photographs</h2>
+      <p class="gal-note">${MEDIA.items.length} in the archive. Only people the
+        archive treats as deceased can appear here.</p>
+      ${loose.length ? `<h3>Not yet linked to anyone</h3>
+        <div class="shots wide">${loose.map(card).join('')}</div>` : ''}
+      <h3>Linked to someone in the tree</h3>
+      <div class="shots wide">${MEDIA.items.filter((m) => attached.has(m.file))
+        .map(card).join('')}</div>
+    </div>`;
+  box.hidden = false;
+  box.querySelectorAll('[data-lightbox]').forEach((img) => {
+    img.addEventListener('click', (e) => { e.stopPropagation(); openLightbox(img.dataset.lightbox); });
+  });
+  document.addEventListener('keydown', lightboxKeys);
 }
 
 // ── search ───────────────────────────────────────────────────────────────────
@@ -844,13 +944,14 @@ window.Tree = {
   P, F, POS,
   rebuild, select, clearSelection, showPanel, fitView, centreOn, highlightSelection,
   lifeYears, eventLine, esc, linkify, personButton, listSection,
+  get media() { return MEDIA; }, mediaFor, wireLightbox, openLightbox, openGallery,
   get selectedId() { return selectedId; },
   onPanel: null,   // editor.js installs a renderer here
 };
 
 (async function main() {
   try {
-    DATA = await load();
+    [DATA] = await Promise.all([load(), loadMedia()]);
   } catch (err) {
     el('loading').textContent = err.message;
     el('subtitle').textContent = 'Data unavailable';
@@ -869,6 +970,16 @@ window.Tree = {
   }
 
   el('loading').remove();
+  if (MEDIA.items && MEDIA.items.length) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'edit-toggle';
+    btn.id = 'gallery-btn';
+    btn.title = 'All photographs';
+    btn.textContent = `\u{1F5BC} ${MEDIA.items.length}`;
+    btn.addEventListener('click', openGallery);
+    document.querySelector('.controls').appendChild(btn);
+  }
   wireStage();
   wireNodes();
   wireSearch();
