@@ -1,0 +1,91 @@
+id: juho-aleksi-kaakkurivaara
+name: "Juho Aleksi Kaakkurivaara"
+alt_names: ["Johan Aleksi Kaakkurivaara", "Janne Kaakkurivaara", "Janne"]
+tree_id: "@I6000000087429432922@"
+geni_id: "6000000087429432922"
+
+birth:
+  date: "1910-03-15"
+  place: "Kemijärvi, Finland"
+  confidence: medium
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged (from Geni)"
+  notes: |
+    No primary citation. The Geni profile carries the date but the maternal side
+    of this export cites no parish books at all, unlike the paternal side.
+    The 1910 birth record would also settle H1 by naming his parents.
+
+death:
+  date: "1959-09-24"
+  place: "Kemijärvi, Finland"
+  confidence: high
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged"
+    - photo: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+  notes: |
+    The gravestone reads "JOHAN ALEKSI +24.9.1959", matching the record exactly.
+    A stone is a secondary source but an independent one, and it agrees.
+
+burial:
+  place: "Vuostimon hautausmaa, Kemijärvi"
+  confidence: high
+  sources:
+    - photo: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+
+parents:
+  father: {name: "Kalle (Karl) Kaakkurivaara?", id: kalle-kaakkurivaara, confidence: medium}
+  mother: {name: "Amanda Serafiina?", id: amanda-serafiina-kaakkurivaara, confidence: medium}
+  notes: |
+    NOT ESTABLISHED — hypothesis H1. The GEDCOM records his parents' marriage as
+    Kemijärvi, 5 Jul 1899, with NO NAMES attached to it.
+
+    H1: the parents are the couple on the family gravestone, Kalle Kaakkurivaara
+    (1856-1929) and Amanda Serafiina (1876-1960).
+    For: a family-held stone naming a Kaakkurivaara couple of exactly the right
+    generation, buried at Kemijärvi; ages fit a marriage in 1899 (Kalle 43,
+    Amanda 23) and a son in 1910 (54 and 34).
+    Against: nothing yet — but "nothing against" is not evidence.
+    Test: the 1910 birth record names the parents outright.
+
+marriage:
+  spouse: {name: "Anna Emilia Matiaksentytär Talvensaari", id: anna-emilia-talvensaari}
+  date: "1947-07-19"
+  place: "Kemijärvi, Finland"
+  confidence: high
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged"
+
+children:
+  - {name: "[living — recorded in the tree as Living Kaakkurivaara]", birth: "withheld",
+     notes: "Living. Nothing about her is recorded in this repository."}
+
+occupation: null
+
+documents:
+  - file: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+    type: gravestone
+    notes: "Shared stone with his wife. Reads KAAKKURIVAARA / JOHAN ALEKSI *15.3.1910 +24.9.1959."
+  - file: "docs/media/janne-kaakkurivaara-1910-1959.jpg"
+    type: portrait
+    notes: |
+      Man in a suit at an outdoor gathering, buildings and a seated crowd behind.
+      Identified by the filename as Janne, his nickname. The identification comes
+      from whoever named the file, not from anything in the image.
+
+notes:
+  - "Known as Janne — the Geni record carries NICK Janne on both name variants."
+  - |
+    Johan vs Juho is not a discrepancy: the parish books of this region are kept
+    in Swedish, and Johan is simply how Juho is written there. His gravestone
+    uses Johan; the family used Juho.
+  - |
+    The Kaakkurivaara farm is in Ylikylä (Swedish Öfverby), Kemijärvi. HisKi has
+    Kaakkurivaara events there from 1845, and a Talvensaari-Kaakkurivaara
+    marriage as early as 1858 — the two families were already joined three
+    generations before the 1947 marriage this line descends from.
+
+flags:
+  - NEEDS_RESEARCH: "1910 birth record — names his parents and settles H1"
+  - NEEDS_RESEARCH: "The 5 Jul 1899 marriage record — who married?"
+
+status: needs_research

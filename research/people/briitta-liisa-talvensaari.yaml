@@ -1,0 +1,59 @@
+id: briitta-liisa-talvensaari
+name: "Briitta Liisa Matintytär Talvensaari"
+alt_names: ["Liisa Talvensaari", "Briitta Liisa Matintytär"]
+tree_id: null
+geni_id: null
+
+birth:
+  date: "~1875"
+  confidence: low
+  sources:
+    - filename: "docs/media/briitta-liisa-matintytar-talvensaari-1875-1952.jpg"
+  notes: |
+    Year only, and only from the photograph's caption. No document seen.
+
+death:
+  date: "~1952"
+  confidence: low
+  sources:
+    - filename: "docs/media/briitta-liisa-matintytar-talvensaari-1875-1952.jpg"
+
+parents:
+  father: {name: "Matti (from the patronymic) — Matti Autioniemi?", id: matti-autioniemi, confidence: low}
+  notes: |
+    "Matintytär" establishes only that her father was called Matti. Hypothesis
+    H4 identifies him with Matti Autioniemi (1851-1930), on the strength of the
+    Liisa named in his 1930 death notice alongside a Talvensaari husband.
+    If true, she was born when he was ~24.
+
+marriage:
+  spouse: {name: "Anselm Talvensaari?", confidence: low}
+  notes: |
+    From the death notice's "Anselm ja Liisa Talvensaari", read as a couple.
+    Talvensaari is her recorded surname while her patronymic is Matintytär,
+    which fits Talvensaari being a married name.
+
+documents:
+  - file: "docs/media/briitta-liisa-matintytar-talvensaari-1875-1952.jpg"
+    type: portrait
+    notes: |
+      Head-and-shoulders portrait of an elderly woman in a headscarf, cut out
+      and mounted. Undated; from her apparent age, likely 1930s-1940s.
+
+notes:
+  - |
+    IMPORTANT — she is NOT the living relative of the same first name.
+    This woman died in 1952, two generations earlier. The archive's leak check
+    flagged the collision, and she is declared in tools/known-deceased.txt with
+    her dates and the evidence for them. Do not "correct" one to the other.
+  - |
+    Her relationship to Anna Emilia Matiaksentytär Talvensaari (1917-1986) is the
+    open question of this whole line. Mother, or aunt by marriage? The
+    patronymics disagree — Matiaksentytär against a husband named Anselm — and
+    the 1917 birth record is what will settle it.
+
+flags:
+  - NEEDS_RESEARCH: "Her birth, marriage and death records — nothing here rests on a document yet"
+  - NEEDS_REVIEW: "Her relationship to Anna Emilia — mother or aunt?"
+
+status: needs_research

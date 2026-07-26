@@ -1,0 +1,119 @@
+date: "2026-07-27"
+summary: |
+  First research session on the maternal (Kemijärvi) line. Established the two
+  grandparents from existing material, opened four hypotheses about the
+  generation above them, and found the one structural gap that blocks the whole
+  line.
+
+events:
+  - type: research_performed
+    agent: claude
+    summary: "Read the skill at gist.github.com/peas/ee5b0bcdb54a809b6ddee83caff51ca6 and set up research/ to its schema"
+
+  - type: fact_discovered
+    agent: claude
+    summary: "Both maternal great-grandparent marriages exist in the GEDCOM with a date and place but NO SPOUSES"
+    confidence: high
+    source: "data/gedcom/export-BloodTree-2026-07-25.curated.ged, families @F6000000018624726695@ and @F6000000064453790925@"
+    details: |
+      Kemijärvi 25 Apr 1898 (Anna Emilia's parents) and Kemijärvi 5 Jul 1899
+      (Juho Aleksi's parents). Somebody knew these marriages happened and did
+      not record who married. This is the highest-value gap in the line: one
+      record each unlocks a whole maternal quarter.
+
+  - type: research_performed
+    agent: claude
+    summary: "HisKi coverage for Kemijärvi checked before searching — a negative result worth having"
+    source: "https://hiski.genealogia.fi/hiski?fi+0188"
+    details: |
+      HisKi runs to 1899 overall, but Kemijärvi's books stop at 1860 (burials
+      1862). The 1898/1899 marriages are therefore NOT in HisKi and no search
+      of it will find them. They need the digitised parish books at SSHY or
+      Kansallisarkisto. Checking coverage first saved an open-ended search.
+
+  - type: research_performed
+    agent: claude
+    summary: "Swept HisKi Kemijärvi (parish 0188) for six maternal surnames across baptisms, marriages and burials"
+    details: |
+      Kaakkurivaara 12 events, Talvensaari 38, Sipovaara 20, Helistekangas 2,
+      Autioniemi 1, Perälä 1. Raw capture in research/sources/hiski-raw.json.
+
+  - type: correction
+    agent: claude
+    summary: "First HisKi sweep was worthless — corrected before anything was drawn from it"
+    old_value: "~620 'events' for every surname, including surnames with no presence in the parish"
+    new_value: "12-38 events, differing per surname, with an unfiltered control query for comparison"
+    details: |
+      The first sweep used a field name (lsukunimi) that does not exist. HisKi
+      ignores an unrecognised field silently and returns the entire parish, so
+      every surname looked equally well attested. Identical counts across
+      unrelated surnames was the tell. Recorded in the source notes so the trap
+      is not walked into twice.
+
+  - type: fact_discovered
+    agent: claude
+    summary: "Kaakkurivaara and Talvensaari were already intermarrying in Öfverby in 1858"
+    confidence: high
+    source: "HisKi Kemijärvi vihityt 2.5.1858"
+    details: |
+      Bd.s. Olof Eriksson Talvensaari married Bd.d:tr Brita Maria Eriksdotter
+      Kaakkurivaara. Three generations before the 1947 marriage this line
+      descends from, and the same village. Öfverby is Ylikylä.
+
+  - type: fact_discovered
+    agent: claude
+    summary: "A Karl Kaakkurivaara was baptised at Ylikylä on 14 April 1856 — hypothesis H2"
+    confidence: medium
+    source: "HisKi Kemijärvi kastetut 14.4.1856"
+    details: |
+      Father Backst. Matts Simonsson Kaakkurivaara, mother Anna Greta (33).
+      The family gravestone reads KALLE KAAKKURIVAARA 1856-1929, and Kalle is
+      the everyday form of Karl. If H2 holds it reaches back two further
+      generations at once: Matts Simonsson, and through his patronymic a Simon.
+
+  - type: manuscript_read
+    agent: claude
+    summary: "Transcribed the 1930 Matti Autioniemi death notice from the family's clipping"
+    source: "docs/media/matti-autioniemi-1851-1930-kuolinilmoitus.jpg"
+    details: |
+      Gives a death date of 18 Apr 1930 at the Autioniemi house in Ylikylä,
+      Kemijärvi, an age of 79 years 15 days (→ born ~3 Apr 1851), a widow Kreeta
+      née Helistekangas, 5 sons and 2 daughters, a daughter Emilia emigrated to
+      America, and a couple "Anselm ja Liisa Talvensaari" among the mourners.
+      Full transcription in research/sources/.
+
+  - type: fact_discovered
+    agent: claude
+    summary: "Amanda Serafiina's maiden name is in conflict between two sources — NOT resolved"
+    confidence: low
+    details: |
+      The photograph filename says Sipovaara; the gravestone in that same
+      photograph reads "AMANDA SEREFIA o.s. PERÄLÄ". HisKi puts every
+      19th-century Sipovaara event in Storby/Isokylä, a different village from
+      the Öfverby/Ylikylä Kaakkurivaara cluster. Recorded as a conflict under her
+      married name so that neither candidate is silently adopted.
+
+  - type: yaml_updated
+    agent: claude
+    summary: "Six people written up: 2 established, 4 hypothesised"
+    details: |
+      juho-aleksi-kaakkurivaara and anna-emilia-talvensaari rest on the GEDCOM
+      plus an independent gravestone that agrees with it on all four dates.
+      kalle-kaakkurivaara, amanda-serafiina-kaakkurivaara, matti-autioniemi and
+      briitta-liisa-talvensaari are hypotheses, flagged as such, with the
+      specific document that would confirm or kill each one.
+
+  - type: research_performed
+    agent: claude
+    summary: "Noted that the maternal side carries NO source citations at all"
+    details: |
+      The paternal Pirttisalo side of this GEDCOM cites parish books throughout,
+      with SSHY links and access dates. The maternal side has none — every
+      maternal fact currently rests on an uncited Geni entry. That asymmetry is
+      itself a finding about where the research effort has gone so far.
+
+open_questions:
+  - "H1: are Kalle (1856-1929) and Amanda Serafiina (1876-1960) the parents of Juho Aleksi? → 1910 birth record"
+  - "H2: is the Karl baptised 14.4.1856 the Kalle on the gravestone? → burial record, confirm the death date"
+  - "H3: was Amanda née Sipovaara or Perälä? → 1899 marriage record"
+  - "H4: was Briitta Liisa the mother of Anna Emilia, or an aunt? → 1917 birth record; the patronymics disagree"

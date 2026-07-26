@@ -1,0 +1,89 @@
+id: anna-emilia-talvensaari
+name: "Anna Emilia Matiaksentytär Talvensaari"
+alt_names: ["Anna Emilia Kaakkurivaara", "Anna Emilia Matiaksentytär"]
+tree_id: "@I6000000087381053877@"
+geni_id: "6000000087381053877"
+
+birth:
+  date: "1917-01-28"
+  place: "Kemijärvi, Finland"
+  confidence: medium
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged (from Geni)"
+  notes: "No primary citation. The 1917 birth record would also name her father."
+
+death:
+  date: "1986-04-08"
+  place: "Kemijärvi, Finland"
+  confidence: high
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged"
+    - photo: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+  notes: |
+    The gravestone reads "ANNA EMILIA o.s. TALVENSAARI *28.1.1917 +8.4.1986",
+    agreeing with the record on both dates and confirming Talvensaari as the
+    maiden name.
+
+burial:
+  place: "Vuostimon hautausmaa, Vuostimo, Kemijärvi"
+  confidence: high
+  sources:
+    - gedcom: "export-BloodTree-2026-07-25.curated.ged (PLAC on the BURI event)"
+    - photo: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+
+parents:
+  father: {name: "Matias Talvensaari (given name only, from the patronymic)", confidence: medium}
+  mother: {name: "unknown", confidence: none}
+  notes: |
+    NOT ESTABLISHED. The GEDCOM records her parents' marriage as Kemijärvi,
+    25 Apr 1898, with NO NAMES attached.
+
+    The patronymic "Matiaksentytär" means daughter of Matias — this is the one
+    thing actually known about her father, and it comes from her own recorded
+    name rather than from any document about him.
+
+    Hypothesis H4 would make her mother Briitta Liisa Matintytär Talvensaari
+    (1875-1952), of whom the family holds a portrait. See the conflict note
+    below; it is not resolved.
+
+marriage:
+  spouse: {name: "Juho Aleksi Kaakkurivaara", id: juho-aleksi-kaakkurivaara}
+  date: "1947-07-19"
+  place: "Kemijärvi, Finland"
+  confidence: high
+  notes: |
+    She was 30 and he was 37 — both late for the period, and 1947 is immediately
+    after the war and the evacuation and burning of Lapland. Worth remembering
+    when reading any gap in the records around 1944-1946.
+
+children:
+  - {name: "[living — recorded in the tree as Living Kaakkurivaara]", birth: "withheld"}
+
+documents:
+  - file: "docs/media/hautakivi-johan-aleksi-kaakkurivaara-1910-1959-anna-emilia-talvensaari-1917-1986.jpg"
+    type: gravestone
+
+notes:
+  - |
+    CONFLICT, UNRESOLVED — the patronymic versus the death notice.
+    A family photograph is captioned "Briitta Liisa Matintytär Talvensaari
+    1875-1952", and the 1930 Autioniemi death notice lists "Anselm ja Liisa
+    Talvensaari" among the mourners. Read together these suggest Liisa was a
+    daughter of Matti Autioniemi who married a Talvensaari — and if that
+    Talvensaari was Anselm, then Liisa is NOT this woman's mother, because this
+    woman is Matias's daughter, not Anselm's.
+    Three ways out, none yet supported: (a) Liisa is an aunt, not the mother;
+    (b) her husband carried both names, e.g. Matias Anselm, and was known by the
+    second; (c) the caption or the notice is wrong. Do not pick one without the
+    1917 birth record.
+  - |
+    If H4 did hold, her mother would have been 42 at her birth and married 19
+    years earlier — making her a youngest child of a large family. Consistent,
+    but consistency is not evidence.
+
+flags:
+  - NEEDS_RESEARCH: "1917 birth record — names her father, and resolves H4"
+  - NEEDS_RESEARCH: "The 25 Apr 1898 marriage record — who married?"
+  - NEEDS_REVIEW: "Matiaksentytär vs Anselm — see the conflict note"
+
+status: needs_research

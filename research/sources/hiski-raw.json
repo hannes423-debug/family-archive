@@ -1,0 +1,1055 @@
+{
+ "Kaakkurivaara": {
+  "vihityt": {
+   "groom": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "6.8.1848",
+      "Öfverby",
+      "",
+      "Drg. Joh. Fredr. Kaakkurivaara",
+      "Pig. Anna Greta Larsd:tr Sedig",
+      "",
+      ""
+     ],
+     [
+      "",
+      "19.1.1850",
+      "Öfverby",
+      "",
+      "Drg. Matts Sim.s. Kaakkurivaara",
+      "Pig. Anna Greta Joh.d:tr Peldoniemi",
+      "",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+1183",
+     "/hiski?fi+0188+vihityt+1202"
+    ]
+   },
+   "bride": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "2.5.1858",
+      "Öfverby",
+      "",
+      "Bd.s. Olof Erikss. Talvensaari",
+      "Bd.d:tr Brita Maria Eriksd:tr Kaakkurivaara",
+      "",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+1345"
+    ]
+   }
+  },
+  "kastetut": {
+   "father": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "29.2.1849",
+      "4.3.1849",
+      "-",
+      "",
+      "Nyb. Joh. Fredr. Kaakkurivaara",
+      "Anna Gretha 28",
+      "Sus:a Gust:a"
+     ],
+     [
+      "14.12.1854",
+      "8.1.1854",
+      "Öfverby",
+      "",
+      "Drg. Matts Sim. Kaakkurivaara",
+      "Anna Greta 31",
+      "Anna Walborg"
+     ],
+     [
+      "14.4.1856",
+      "15.4.1856",
+      "Ylikylä",
+      "",
+      "Backst. Matts Simonsson Kaakkurivaara",
+      "Anna Greta 33",
+      "Karl"
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+5734",
+     "/hiski?fi+0188+kastetut+6085",
+     "/hiski?fi+0188+kastetut+6283"
+    ]
+   },
+   "mother": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "21.5.1847",
+      "16.6.1847",
+      "-",
+      "",
+      "F.sold. Pehr Pyhäjärvi",
+      "Brud Anna Kaakkurivaara 43",
+      "Matts Henrik"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: n.d.conf."
+     ],
+     [
+      "27.3.1857",
+      "21.4.1857",
+      "Öfverby",
+      "",
+      "- - - -",
+      "L.kv. Aina Gr. Mich.d:r Kaakkurivaara 29",
+      "Michel"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: oä."
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+5597",
+     null,
+     "/hiski?fi+0188+kastetut+6379",
+     null
+    ]
+   }
+  },
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ],
+     [
+      "15.12.1845",
+      "17.12.1845",
+      "-",
+      "-",
+      "Rotfatt. enkl. And. Kaakkurivaara",
+      "bukref",
+      "82",
+      "4",
+      "",
+      "10"
+     ]
+    ],
+    "links": [
+     null,
+     "/hiski?fi+0188+haudatut+2837"
+    ]
+   }
+  }
+ },
+ "Talvensaari": {
+  "vihityt": {
+   "groom": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "10.2.1821",
+      "Öfverby",
+      "",
+      "Drg Ungkl. Henrik Erikss. Talvensaari",
+      "Pgn Malin Olofsdtr Kärppä",
+      "",
+      ""
+     ],
+     [
+      "",
+      "14.4.1821",
+      "Öfverby",
+      "",
+      "Bdes - Ugkl Erik Johanss. Talvensaari",
+      "Bde dtr Caisa Lisa Tula",
+      "",
+      ""
+     ],
+     [
+      "",
+      "24.12.1823",
+      "Öfverby",
+      "",
+      "Bde:s Ugkl. Johan Joh.son Talvensaari",
+      "Pgn Anna Caisa Henr:dtr Tapio",
+      "",
+      ""
+     ],
+     [
+      "",
+      "30.7.1848",
+      "Öfverby",
+      "",
+      "Bd. Enkl. Erik Joh.s. Talvensaari",
+      "Bd.d:tr Anna Sim.d:tr Junttila",
+      "",
+      ""
+     ],
+     [
+      "",
+      "26.3.1852",
+      "Öfverby",
+      "",
+      "Bd.s. Mich. Erikss. Talvensaari",
+      "Bd.d:tr Brita Maria Aronsd:tr Kulpakko",
+      "",
+      ""
+     ],
+     [
+      "",
+      "2.5.1858",
+      "Öfverby",
+      "",
+      "Bd.s. Olof Erikss. Talvensaari",
+      "Bd.d:tr Brita Maria Eriksd:tr Kaakkurivaara",
+      "",
+      ""
+     ],
+     [
+      "",
+      "31.3.1859",
+      "Öfverby",
+      "",
+      "Bd.s. Joh. Erik Joh.s. Talvensaari",
+      "Brita Sus:a Mattsd:tr Kuosku",
+      "",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+752",
+     "/hiski?fi+0188+vihityt+762",
+     "/hiski?fi+0188+vihityt+796",
+     "/hiski?fi+0188+vihityt+1181",
+     "/hiski?fi+0188+vihityt+1251",
+     "/hiski?fi+0188+vihityt+1345",
+     "/hiski?fi+0188+vihityt+1367"
+    ]
+   },
+   "bride": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "13.4.1810",
+      "Nederby",
+      "",
+      "Simon Johansson Heckman",
+      "Susanna Talvensaari",
+      "",
+      ""
+     ],
+     [
+      "",
+      "1817",
+      "Öfverby",
+      "",
+      "Drg. Matts Saunavaara",
+      "B.d:r Gretha Joh.d:r Talvensaari",
+      "",
+      ""
+     ],
+     [
+      "",
+      "alkup - VIHKK: _"
+     ],
+     [
+      "",
+      "alkup - VIHPV: _"
+     ],
+     [
+      "",
+      "27.4.1845",
+      "Öfverby",
+      "",
+      "Bde s:n Ugkl. Carl Abram Johans:s Oinas",
+      "Bde dtr Susanna Eriksdtr Talvensaari",
+      "",
+      ""
+     ],
+     [
+      "",
+      "11.4.1848",
+      "(Öfverby) Sodankylä s:n",
+      "",
+      "Bd.s. Johan Erik Eriksson Berttula",
+      "Bd.d:tr Caisa Eriksd:tr Talvensaari",
+      "",
+      ""
+     ],
+     [
+      "",
+      "25.12.1848",
+      "Öfverby",
+      "",
+      "Bd.s. Sim. Esaiass. Pauna",
+      "Bd.d:tr Briat Maria Eriksd:tr Talvensaari",
+      "",
+      ""
+     ],
+     [
+      "",
+      "10.7.1859",
+      "Sodank.",
+      "",
+      "Bd.s. Karl Abr. Joh.s. Luiro Alatalo",
+      "Pig. Brita Caisa Joh.d:tr Talvensaari",
+      "Öfverby",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+608",
+     "/hiski?fi+0188+vihityt+695",
+     null,
+     null,
+     "/hiski?fi+0188+vihityt+1130",
+     "/hiski?fi+0188+vihityt+1178",
+     "/hiski?fi+0188+vihityt+1188",
+     "/hiski?fi+0188+vihityt+1375"
+    ]
+   }
+  },
+  "kastetut": {
+   "father": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "28.9.1821",
+      "29.9.1821",
+      "",
+      "",
+      "Drg Henrik Talvensaari",
+      "Hustru Magdalena",
+      "Johannes"
+     ],
+     [
+      "16.12.1826",
+      "24.12.1826",
+      "",
+      "",
+      "Bde:s Johan Talvensaari",
+      "Modren Anna Caisa",
+      "Johan"
+     ],
+     [
+      "1.1.1827",
+      "7.1.1827",
+      "",
+      "",
+      "Bdn Eric Talvensaari",
+      "Modren Caisa",
+      "Michel"
+     ],
+     [
+      "9.9.1828",
+      "15.9.1828",
+      "",
+      "",
+      "Bdn Erik Talvensaari",
+      "Madren Anna Caisa",
+      "Elisabeth Margareta"
+     ],
+     [
+      "1.6.1832",
+      "24.6.1832",
+      "",
+      "",
+      "Fadr. Eric Talvensaari",
+      "Modren Caisa Lisa",
+      "Michel"
+     ],
+     [
+      "6.2.1842",
+      "11.2.1842",
+      "-",
+      "",
+      "Bd. Erik Talvensaari",
+      "Lisa Caisa",
+      "Simon Johan"
+     ],
+     [
+      "4.1.1850",
+      "8.1.1850",
+      "-",
+      "",
+      "Bd.s. Matts Joh.s. Talvensaari",
+      "Clara 30",
+      "Maria"
+     ],
+     [
+      "",
+      "17.5.1852",
+      "-",
+      "",
+      "Bd. Matts Joh.s. Talvensaari",
+      "Clara 32",
+      "Brita Helena"
+     ],
+     [
+      "",
+      "alkup - SYNVU: -"
+     ],
+     [
+      "11.4.1853",
+      "18.4.1853",
+      "-",
+      "",
+      "Bd.s. Mich. Talvensaari",
+      "Maria 20",
+      "Brita Lisa"
+     ],
+     [
+      "14.12.1855",
+      "6.1.1856",
+      "Öfverby",
+      "",
+      "Backst. Matts Talvensaari",
+      "Klara 35",
+      "Kaisa Greta"
+     ],
+     [
+      "26.9.1856",
+      "5.10.1856",
+      "Öfverby",
+      "",
+      "Bd. Mich. Erss. Talvensaari",
+      "Maria 23",
+      "Johan Erik"
+     ],
+     [
+      "24.12.1858",
+      "30.1.1859",
+      "Ylikylä",
+      "",
+      "Bd.s. Olof Talvensaari",
+      "brita Maria 21",
+      "Sus:a Walborg"
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+3614",
+     "/hiski?fi+0188+kastetut+4042",
+     "/hiski?fi+0188+kastetut+4043",
+     "/hiski?fi+0188+kastetut+4203",
+     "/hiski?fi+0188+kastetut+4525",
+     "/hiski?fi+0188+kastetut+5163",
+     "/hiski?fi+0188+kastetut+5790",
+     "/hiski?fi+0188+kastetut+5981",
+     null,
+     "/hiski?fi+0188+kastetut+6029",
+     "/hiski?fi+0188+kastetut+6255",
+     "/hiski?fi+0188+kastetut+6320",
+     "/hiski?fi+0188+kastetut+6497"
+    ]
+   }
+  },
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ],
+     [
+      "1.2.1832",
+      "19.2.1832",
+      "",
+      "",
+      "Bdn Johan Talvensaari",
+      "ålderdom",
+      "77",
+      "1",
+      "",
+      "25"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: g."
+     ],
+     [
+      "13.2.1834",
+      "23.2.1834",
+      "",
+      "",
+      "Bde E:an Lisa Talvensaari",
+      "nervfeb",
+      "73",
+      "7",
+      "",
+      "16"
+     ],
+     [
+      "2.5.1847",
+      "5.5.1847",
+      "-",
+      "-",
+      "Bd. Johan Talvensaari",
+      "oang.",
+      "54",
+      "7",
+      "",
+      "11"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: g."
+     ],
+     [
+      "21.11.1847",
+      "5.12.1847",
+      "-",
+      "-",
+      "Bd.värd:n Lisa Caisa Talvensaari",
+      "stygn",
+      "49",
+      "",
+      "",
+      ""
+     ],
+     [
+      "",
+      "alkup - IKAKK: -"
+     ],
+     [
+      "",
+      "alkup - IKAPV: -"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: g."
+     ]
+    ],
+    "links": [
+     null,
+     "/hiski?fi+0188+haudatut+2187",
+     null,
+     "/hiski?fi+0188+haudatut+2363",
+     "/hiski?fi+0188+haudatut+2879",
+     null,
+     "/hiski?fi+0188+haudatut+2890",
+     null,
+     null,
+     null
+    ]
+   }
+  }
+ },
+ "Autioniemi": {
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ]
+    ],
+    "links": [
+     null
+    ]
+   }
+  }
+ },
+ "Helistekangas": {
+  "kastetut": {
+   "father": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "3.1.1818",
+      "5.1.1818",
+      "",
+      "",
+      "Nybygg. Erik Helistekangas",
+      "Maria",
+      "Maria"
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+3376"
+    ]
+   }
+  },
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ]
+    ],
+    "links": [
+     null
+    ]
+   }
+  }
+ },
+ "Perälä": {
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ]
+    ],
+    "links": [
+     null
+    ]
+   }
+  }
+ },
+ "Sipovaara": {
+  "vihityt": {
+   "groom": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "10.4.1845",
+      "Storby",
+      "",
+      "Bde s:n Ugkl. Matts Eriksson Sipovaara",
+      "Jungfru Sophia Matlein",
+      "",
+      ""
+     ],
+     [
+      "",
+      "21.2.1850",
+      "Storby",
+      "",
+      "Bd.s. Johan Erik Erikss. Sipovaara",
+      "Bd.d:tr Walborg Carlsd:tr Kostamo, Heikkilä",
+      "",
+      ""
+     ],
+     [
+      "",
+      "29.6.1853",
+      "Storby",
+      "",
+      "Bd.enkl. Erik Olofss. Sipovaara",
+      "Bd.enk. Kaisa Särkikangas",
+      "",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+1125",
+     "/hiski?fi+0188+vihityt+1205",
+     "/hiski?fi+0188+vihityt+1279"
+    ]
+   },
+   "bride": {
+    "header": [
+     "Kuul.",
+     "Vihitty",
+     "Kylä",
+     "Talo",
+     "Mies",
+     "Vaimo",
+     "Kylä",
+     "Talo"
+    ],
+    "rows": [
+     [
+      "",
+      "30.6.1812",
+      "Storby",
+      "",
+      "Bds. Eric Lahtela",
+      "B.d:r Carin Sipovaara",
+      "",
+      ""
+     ],
+     [
+      "",
+      "3.5.1813",
+      "",
+      "",
+      "Bd., enkl. Matts Mäkelä",
+      "Bd. enk Lisa Sipovaara",
+      "",
+      ""
+     ],
+     [
+      "",
+      "3.5.1846",
+      "Öfverby",
+      "",
+      "Bde s:n Ugkl. Johan Johansson Peldoperä",
+      "Bde dtr Elsa Greta Eriksdtr Sipovaara",
+      "",
+      ""
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+vihityt+639",
+     "/hiski?fi+0188+vihityt+643",
+     "/hiski?fi+0188+vihityt+1150"
+    ]
+   }
+  },
+  "kastetut": {
+   "father": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "1.1.1846",
+      "4.1.1846",
+      "-",
+      "",
+      "Bd.s. Matts Sipovaara",
+      "Sophia",
+      "Johan Eric"
+     ],
+     [
+      "2.1.1848",
+      "7.1.1848",
+      "-",
+      "",
+      "Bd.s. Matts Erikss. Sipovaara",
+      "Sophia 24",
+      "Cathar. Sophia"
+     ],
+     [
+      "24.6.1851",
+      "29.6.1851",
+      "-",
+      "",
+      "Bd. Matts Erikss. Sipovaara",
+      "Sofia 28",
+      "Sus:a Mathilda"
+     ],
+     [
+      "22.1.1854",
+      "27.1.1854",
+      "Storby",
+      "",
+      "Bd. Matts Sipovaara",
+      "Sofia 30",
+      "Carol. Eika"
+     ],
+     [
+      "9.1.1858",
+      "10.1.1858",
+      "Isokylä",
+      "",
+      "Bd. Matts Sipovaara",
+      "Sofia 34",
+      "Gust. Fredrik"
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+5467",
+     "/hiski?fi+0188+kastetut+5640",
+     "/hiski?fi+0188+kastetut+5901",
+     "/hiski?fi+0188+kastetut+6093",
+     "/hiski?fi+0188+kastetut+6416"
+    ]
+   },
+   "mother": {
+    "header": [
+     "Syntynyt",
+     "Kastettu",
+     "Kylä",
+     "Talo",
+     "Isä",
+     "Äiti",
+     "Lapsi"
+    ],
+    "rows": [
+     [
+      "31.3.1844",
+      "31.3.1844",
+      "-",
+      "",
+      "Bd.s. Påhl Påhlss. Peldoperä",
+      "Walb. Ericsd:r Sipovaara",
+      "Caisa Madl."
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: +23/3"
+     ],
+     [
+      "22.1.1846",
+      "25.1.1846",
+      "-",
+      "",
+      "Bd.s. Joh. Joh.s. Peldoperä",
+      "Förl.brud Gr. Sipovaara",
+      "Maria Gustafva"
+     ]
+    ],
+    "links": [
+     "/hiski?fi+0188+kastetut+5321",
+     null,
+     "/hiski?fi+0188+kastetut+5470"
+    ]
+   }
+  },
+  "haudatut": {
+   "deceased": {
+    "header": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Ikä"
+    ],
+    "rows": [
+     [
+      "Kuollut",
+      "Haudattu",
+      "Kylä",
+      "Talo",
+      "Henkilö",
+      "Kuolinsyy",
+      "vv",
+      "kk",
+      "vko",
+      "pv"
+     ],
+     [
+      "24.4.1812",
+      "2.5.1812",
+      "Storby",
+      "",
+      "Matts Sipovaara",
+      "feber",
+      "51",
+      "4",
+      "",
+      ""
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: g."
+     ],
+     [
+      "26.12.1812",
+      "30.12.1812",
+      "Storby",
+      "",
+      "Bd.d:r Greta Eriksd:r Sipovaara",
+      "okänd sj.",
+      "",
+      "",
+      "",
+      "5"
+     ],
+     [
+      "4.10.1852",
+      "16.10.1852",
+      "-",
+      "-",
+      "Sytn.mor Kaisa Sipovaara",
+      "styng",
+      "61",
+      "8",
+      "",
+      "26"
+     ],
+     [
+      "",
+      "alkup - ALKUPKOMM: g."
+     ]
+    ],
+    "links": [
+     null,
+     "/hiski?fi+0188+haudatut+1630",
+     null,
+     "/hiski?fi+0188+haudatut+1672",
+     "/hiski?fi+0188+haudatut+3073",
+     null
+    ]
+   }
+  }
+ }
+}

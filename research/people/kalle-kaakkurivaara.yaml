@@ -1,0 +1,72 @@
+id: kalle-kaakkurivaara
+name: "Kalle Kaakkurivaara"
+alt_names: ["Karl Kaakkurivaara", "Karl Mattsson Kaakkurivaara"]
+tree_id: null           # not yet in the tree
+geni_id: null
+
+birth:
+  date: "1856-04-14"
+  place: "Ylikylä, Kemijärvi, Finland"
+  confidence: medium
+  sources:
+    - hiski: "Kemijärvi kastetut 14.4.1856, christened 15.4.1856, Ylikylä — child Karl, father Backst. Matts Simonsson Kaakkurivaara, mother Anna Greta aged 33"
+    - photo: "docs/media/hautakivi-kalle-kaakkurivaara-1856-1929-amanda-serafiina-sipovaara.jpg"
+  notes: |
+    Hypothesis H2. The gravestone gives the year 1856 and reads "KALLE
+    *14.4.1856" as far as the weathered stone can be made out; HisKi has exactly
+    one Karl Kaakkurivaara baptised in Kemijärvi in 1856, on 14 April, in the
+    right village. Kalle is the everyday Finnish form of Karl.
+    This is a strong match but it is still a match, not a document naming him as
+    Juho Aleksi's father.
+
+death:
+  date: "1929"
+  place: "Kemijärvi, Finland"
+  confidence: medium
+  sources:
+    - photo: "docs/media/hautakivi-kalle-kaakkurivaara-1856-1929-amanda-serafiina-sipovaara.jpg"
+  notes: |
+    From the stone. The full date is legible in the photograph as +15.6.1929,
+    but the stone is worn and the reading should be confirmed against a burial
+    record before being relied on.
+
+parents:
+  father: {name: "Matts (Matti) Simonsson Kaakkurivaara", id: matts-simonsson-kaakkurivaara, confidence: medium}
+  mother: {name: "Anna Greta Johansdotter Peldoniemi", id: anna-greta-peldoniemi, confidence: medium}
+  notes: |
+    From the 1856 baptism, and therefore only as good as H2 — if the Karl
+    baptised in 1856 is not this Kalle, these are somebody else's parents.
+    The mother's age of 33 at the 1856 baptism gives her a birth year of ~1823,
+    consistent with her age of 31 at the 1854 baptism of Anna Walborg.
+
+marriage:
+  spouse: {name: "Amanda Serafiina", id: amanda-serafiina-kaakkurivaara}
+  date: "1899-07-05"
+  place: "Kemijärvi, Finland"
+  confidence: low
+  sources:
+    - gedcom: "family @F6000000018624726695@ — MARR 5 JUL 1899, Kemijärvi, with no spouses recorded"
+  notes: |
+    The date and place come from the GEDCOM's empty family record; attaching
+    Kalle and Amanda to it is hypothesis H1 and is not yet supported by any
+    document. He would have been 43, she 23.
+
+children:
+  - {name: "Juho Aleksi Kaakkurivaara", id: juho-aleksi-kaakkurivaara, birth: "1910",
+     confidence: medium, notes: "H1 — the whole point of the hypothesis."}
+
+occupation: null
+notes:
+  - |
+    His father is recorded in 1856 as "Backstugusittare" (backst.) — a cottager
+    holding a dwelling but not land — while the 1850 marriage calls him "Drg."
+    (dräng, a farmhand). This family was not landholding in the 1850s. Worth
+    noting against the 1930 Autioniemi notice, where that family holds a named
+    house.
+
+flags:
+  - NEEDS_RESEARCH: "Confirm the death date from a burial record, not the stone"
+  - NEEDS_RESEARCH: "The 1899 marriage record — would confirm both H1 and the wife's maiden name"
+  - NEEDS_REVIEW: "H2 rests on a name-and-year match. Find a document linking this Karl to Juho Aleksi."
+
+status: needs_research

@@ -1,0 +1,63 @@
+id: amanda-serafiina-kaakkurivaara
+name: "Amanda Serafiina Kaakkurivaara"
+alt_names: ["Amanda Serefia", "Amanda Serafiina Sipovaara", "Amanda Serafiina Perälä"]
+tree_id: null
+geni_id: null
+
+birth:
+  date: "1876-06-14"
+  place: "Kemijärvi, Finland?"
+  confidence: low
+  sources:
+    - photo: "docs/media/hautakivi-kalle-kaakkurivaara-1856-1929-amanda-serafiina-sipovaara.jpg"
+  notes: |
+    Read from the gravestone as *14.6.1876. The stone is lichened and the
+    reading of the day is the least certain part of it.
+
+death:
+  date: "1960"
+  place: "Kemijärvi, Finland?"
+  confidence: low
+  sources:
+    - photo: "docs/media/hautakivi-kalle-kaakkurivaara-1856-1929-amanda-serafiina-sipovaara.jpg"
+    - filename: "The photograph is captioned 1876-1960"
+  notes: "The stone appears to read +22.6.196[0]; the last digit is not certain."
+
+parents:
+  father: {name: "unknown"}
+  mother: {name: "unknown"}
+  notes: "Unknown, and cannot be pursued until the maiden name is settled."
+
+marriage:
+  spouse: {name: "Kalle Kaakkurivaara", id: kalle-kaakkurivaara}
+  date: "1899-07-05"
+  place: "Kemijärvi, Finland"
+  confidence: low
+  notes: "Hypothesis H1 — see kalle-kaakkurivaara.yaml."
+
+notes:
+  - |
+    CONFLICT, UNRESOLVED — the maiden name.
+    The photograph's filename says **Sipovaara**. The gravestone in that same
+    photograph plainly reads **"AMANDA SEREFIA o.s. PERÄLÄ"** — "o.s." being
+    *omaa sukua*, i.e. née. The stone also gives Serefia, not Serafiina.
+
+    Both are genuine Kemijärvi farm names, but not from the same place: HisKi
+    puts every 19th-century Sipovaara event in Storby/Isokylä, while the
+    Kaakkurivaara and Talvensaari families are all in Öfverby/Ylikylä.
+
+    A gravestone is normally the better witness for a maiden name — it was
+    commissioned by people who knew her. But it is late evidence, and a woman
+    who married twice, or who was born on one farm and raised on another, can
+    honestly be recorded under either name. Do not overwrite one with the other;
+    find the 1899 marriage record, which will give her name as of that day.
+  - |
+    Deliberately filed under her married name so that neither candidate maiden
+    name is silently adopted as fact.
+
+flags:
+  - NEEDS_REVIEW: "Sipovaara (filename) vs Perälä (gravestone) — see the conflict note"
+  - NEEDS_RESEARCH: "The 1899 marriage record settles the maiden name"
+  - NEEDS_ACTION: "Ask the family which name they knew her by"
+
+status: needs_review

@@ -1,0 +1,66 @@
+id: matti-autioniemi
+name: "Matti Autioniemi"
+alt_names: []
+tree_id: null
+geni_id: null
+
+birth:
+  date: "~1851-04-03"
+  place: "Finland (Kemijärvi?)"
+  confidence: medium
+  sources:
+    - document: "research/sources/autioniemi-1930-death-notice.md"
+  notes: |
+    Not a recorded birth date. Derived: the death notice states he died 18 Apr
+    1930 "having lived 79 years and 15 days", which counts back to 3 April 1851.
+    Stated ages in death notices are usually good but not always exact.
+
+death:
+  date: "1930-04-18"
+  place: "Autioniemi house, Ylikylä, Kemijärvi, Finland"
+  confidence: high
+  sources:
+    - document: "research/sources/autioniemi-1930-death-notice.md"
+    - photo: "docs/media/matti-autioniemi-1851-1930-kuolinilmoitus.jpg"
+
+marriage:
+  spouse: {name: "Kreeta Autioniemi, née Helistekangas", id: kreeta-helistekangas}
+  confidence: high
+  sources:
+    - document: "research/sources/autioniemi-1930-death-notice.md"
+  notes: "She signs the notice as his widow, giving her maiden name herself."
+
+children:
+  - {name: "7 children — 5 sons and 2 daughters", confidence: high,
+     notes: |
+       The count is stated in the notice. WHICH of the fifteen names listed are
+       the children is not — the notice runs children, spouses and married
+       daughters' households together without labels. One daughter, Emilia,
+       is marked "(Amerik.)" and had emigrated to America.}
+  - {name: "Liisa, m. Anselm Talvensaari?", id: briitta-liisa-talvensaari,
+     confidence: low, notes: "Hypothesis H4 — see below."}
+
+occupation: "Maanviljelijä (farmer) — 'entinen maanviljelijä', so retired from the farm"
+
+documents:
+  - file: "docs/media/matti-autioniemi-1851-1930-kuolinilmoitus.jpg"
+    type: death_notice
+    notes: "Newspaper clipping, 1930. Full transcription in research/sources/."
+
+notes:
+  - |
+    Hypothesis H4: he is the "Matti" of Briitta Liisa **Matintytär** Talvensaari
+    (1875-1952), whose portrait the family holds. A daughter Liisa appears in his
+    death notice paired with Anselm Talvensaari, and Briitta Liisa's patronymic
+    means "Matti's daughter". Both fit; neither proves it. Matti was an
+    extremely common name and Kemijärvi is not a small parish.
+  - |
+    He held a named house — the notice places his death at "Autioniemen talossa"
+    in Ylikylä. HisKi records no Autioniemi events before 1860, which fits
+    Autioniemi being a later settler farm rather than an old established one.
+
+flags:
+  - NEEDS_RESEARCH: "His own birth and marriage records — would give his parents and confirm the 1851 date"
+  - NEEDS_REVIEW: "H4 — is he Briitta Liisa's father?"
+
+status: needs_research
