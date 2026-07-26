@@ -1,0 +1,55 @@
+name: Deploy the tree to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'tools/verify_public.py'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead of cancelling, so a deploy that is
+# already publishing finishes rather than leaving Pages half-updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Refuse to publish living people's data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This is the gate that matters. The repository is public; the source
+      # genealogy is not in it, and the generated payload must never contain a
+      # living person's names, dates or places. If this fails, nothing deploys.
+      - name: Verify the public build
+        run: python3 tools/verify_public.py
+
+  deploy:
+    name: Deploy
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # docs/ is served as-is: no build step, no dependencies, nothing to
+      # install. What is in the repo is exactly what ships.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,838 @@
+{
+ "generated": "2026-07-26T16:59:28+00:00",
+ "source": "export-BloodTree-2026-07-25.curated.ged",
+ "redacted": true,
+ "stats": {
+  "people": 20,
+  "families": 11,
+  "living": 9,
+  "redacted": 9,
+  "generations": 5
+ },
+ "people": [
+  {
+   "id": "@I6000000088841023239@",
+   "given": "Janika Aukustintytär",
+   "surname": "Vauhkala, Vilkuna",
+   "married": "Pirttisalo",
+   "nick": "",
+   "name": "Janika Aukustintytär Vauhkala, Vilkuna",
+   "aka": [
+    "Janika Aukustintytär Vauhkala"
+   ],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "2 MAY 1887",
+     "display": "2 May 1887",
+     "year": 1887,
+     "precision": "day"
+    },
+    "place": "Nivala, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "16 JUN 1958",
+     "display": "16 June 1958",
+     "year": 1958,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "burial": null,
+   "occupation": null,
+   "notes": [
+    "Syntymätieto: Janiika s. 02.05.1887 Nivala, vanhemmat tal. August Vauhkala ja Emma ? <br/>\nNivala - syntyneet, 1885-1908 (MKO48-68) > 58: sivu 308: 1887; SSHY: https://sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=10134&pnum=58 / Viitattu 15.10.2019<br/>"
+   ],
+   "geniId": "6000000088841023239",
+   "parentFamily": null,
+   "spouseFamilies": [
+    "@F6000000093177824827@"
+   ],
+   "living": false,
+   "generation": 0
+  },
+  {
+   "id": "@I6000000093179262822@",
+   "given": "Juho Heikki Aaponpoika",
+   "surname": "Pirttisalo",
+   "married": "Pirttisalo",
+   "nick": "",
+   "name": "Juho Heikki Aaponpoika Pirttisalo",
+   "aka": [],
+   "sex": "M",
+   "birth": {
+    "date": {
+     "source": "15 SEP 1877",
+     "display": "15 September 1877",
+     "year": 1877,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "5 MAR 1968",
+     "display": "5 March 1968",
+     "year": 1968,
+     "precision": "day"
+    },
+    "place": null,
+    "asserted": false
+   },
+   "burial": null,
+   "occupation": "suutari",
+   "notes": [
+    "Suutari, maanviljelijä\n\n\n'''Haapavesi rippikirja 1873-1879 (MKO14-20)  Haapajärvi, P, Q (Pentinpuro, Pirttisalo, Qvick) ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=6255&pnum=102 / Viitattu 23.02.2025\n\nHaapavesi henkikirja 1910 Mieluskoski Matola  http://digi.narc.fi/digi/view.ka?kuid=21527664 Isoisäni syntynyt 09.05.1877 Nivalassa ja kuollut 5.3.1968 Haapavedellä.\n\n'''Nivala rippikirja 1901-1910 (MKO_III)  Sivu 771 P (Pirttisalo, Porthan, Pirttiperä, Perkkiö, Pihlajamaa) ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=41521&pnum=347 / Viitattu 12.01.2025\n\n'''Haapavesi rippikirja 1901-1910 (AP_II I Aa:14_2)  Sivu 796 Sarjanoja no: 75 Koppila mk ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=44679&pnum=556 / Viitattu 12.01.2025\n\n'''Haapavesi rippikirja 1901-1910 (AP_II I Aa:14_2)  Sivu 868 Kaija no: 91 ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=44679&pnum=628 / Viitattu 12.01.2025\n\n'''Haapavesi rippikirja 1901-1910 (AP_III I Aa:14_3)  Sivu 1172 Mieluskosken kylä Matola n:o 34 ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=44680&pnum=269 / Viitattu 12.01.2025\n\n'''Haapavesi rippikirja 1911-1920 (AP_III I Aa:15_3)  Sivu 1202 Mieluskosken kylä ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=44684&pnum=285 / Viitattu 12.01.2025"
+   ],
+   "geniId": "6000000093179262822",
+   "parentFamily": null,
+   "spouseFamilies": [
+    "@F6000000093177824827@"
+   ],
+   "living": false,
+   "generation": 0
+  },
+  {
+   "id": "@I6000000201282178821@",
+   "given": "Ahti Sanfrid",
+   "surname": "Pirttisalo",
+   "married": "Pirttisalo",
+   "nick": "",
+   "name": "Ahti Sanfrid Pirttisalo",
+   "aka": [],
+   "sex": "M",
+   "birth": {
+    "date": {
+     "source": "26 JUN 1917",
+     "display": "26 June 1917",
+     "year": 1917,
+     "precision": "day"
+    },
+    "place": null,
+    "asserted": false
+   },
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [
+    "Haapavesi rippikirja 1911-1920 (AP_III I Aa:15_3)  Sivu 1202 Mieluskosken kylä ; SSHY http://www.sukuhistoria.fi/sshy/sivut/jasenille/paikat.php?bid=44684&pnum=285 / Viitattu 24.12.2023"
+   ],
+   "geniId": "6000000201282178821",
+   "parentFamily": "@F6000000093177824827@",
+   "spouseFamilies": [],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000087381053877@",
+   "given": "Anna Emilia Matiaksentytär",
+   "surname": "Talvensaari",
+   "married": "Kaakkurivaara",
+   "nick": "",
+   "name": "Anna Emilia Matiaksentytär Talvensaari",
+   "aka": [],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "28 JAN 1917",
+     "display": "28 January 1917",
+     "year": 1917,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "8 APR 1986",
+     "display": "8 April 1986",
+     "year": 1986,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Finland",
+    "asserted": false
+   },
+   "burial": {
+    "date": null,
+    "place": "Vuostimon hautausmaa",
+    "asserted": false
+   },
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000087381053877",
+   "parentFamily": "@F6000000064453790925@",
+   "spouseFamilies": [
+    "@F6000000087380701042@"
+   ],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000087429432922@",
+   "given": "Juho Aleksi",
+   "surname": "Kaakkurivaara",
+   "married": "",
+   "nick": "Janne",
+   "name": "Juho Aleksi Kaakkurivaara",
+   "aka": [
+    "Johan Aleksi Kaakkurivaara"
+   ],
+   "sex": "M",
+   "birth": {
+    "date": {
+     "source": "15 MAR 1910",
+     "display": "15 March 1910",
+     "year": 1910,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "24 SEP 1959",
+     "display": "24 September 1959",
+     "year": 1959,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Finland",
+    "asserted": false
+   },
+   "burial": {
+    "date": null,
+    "place": "Vuostimon hautausmaa",
+    "asserted": false
+   },
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000087429432922",
+   "parentFamily": "@F6000000018624726695@",
+   "spouseFamilies": [
+    "@F6000000087380701042@"
+   ],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000186642517904@",
+   "given": "Lilja Armida",
+   "surname": "Pirttisalo",
+   "married": "Henttunen",
+   "nick": "",
+   "name": "Lilja Armida Pirttisalo",
+   "aka": [
+    "Lilja Armida Pirttisalo"
+   ],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "23 DEC 1910",
+     "display": "23 December 1910",
+     "year": 1910,
+     "precision": "day"
+    },
+    "place": null,
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "21 SEP 1990",
+     "display": "21 September 1990",
+     "year": 1990,
+     "precision": "day"
+    },
+    "place": null,
+    "asserted": false
+   },
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000186642517904",
+   "parentFamily": "@F6000000093177824827@",
+   "spouseFamilies": [],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000186427746832@",
+   "given": "Signe Emilia",
+   "surname": "Pirttisalo",
+   "married": "Kari",
+   "nick": "",
+   "name": "Signe Emilia Pirttisalo",
+   "aka": [],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "29 APR 1919",
+     "display": "29 April 1919",
+     "year": 1919,
+     "precision": "day"
+    },
+    "place": "Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "4 NOV 2005",
+     "display": "4 November 2005",
+     "year": 2005,
+     "precision": "day"
+    },
+    "place": "Oulainen, Finland",
+    "asserted": false
+   },
+   "burial": {
+    "date": null,
+    "place": "Oulaisten Hautausmaa",
+    "asserted": false
+   },
+   "occupation": null,
+   "notes": [
+    "Geni-käyttäjä Gunnar Olavi Taskila päivittänyt profiiliin tarkat kuolintiedot 22.8.2022. M.J."
+   ],
+   "geniId": "6000000186427746832",
+   "parentFamily": "@F6000000093177824827@",
+   "spouseFamilies": [],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000074834385191@",
+   "given": "Sirja Vilhelmiina Anna",
+   "surname": "Pirttisalo",
+   "married": "Pyöriä",
+   "nick": "",
+   "name": "Sirja Vilhelmiina Anna Pirttisalo",
+   "aka": [
+    "Sirja Anna Pirttisalo"
+   ],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "7 OCT 1915",
+     "display": "7 October 1915",
+     "year": 1915,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "2 FEB 2006",
+     "display": "2 February 2006",
+     "year": 2006,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "burial": {
+    "date": null,
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "occupation": "Emäntä",
+   "notes": [],
+   "geniId": "6000000074834385191",
+   "parentFamily": "@F6000000093177824827@",
+   "spouseFamilies": [
+    "@F6000000074835087836@"
+   ],
+   "living": false,
+   "generation": 1
+  },
+  {
+   "id": "@I6000000103683606821@",
+   "given": "Aila Kaarina",
+   "surname": "Pyöriä",
+   "married": "Ängeslevä",
+   "nick": "",
+   "name": "Aila Kaarina Pyöriä",
+   "aka": [],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "18 NOV 1938",
+     "display": "18 November 1938",
+     "year": 1938,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "7 DEC 2014",
+     "display": "7 December 2014",
+     "year": 2014,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000103683606821",
+   "parentFamily": "@F6000000074835087836@",
+   "spouseFamilies": [
+    "@F6000000128977460839@",
+    "@F6000000103683606827@"
+   ],
+   "living": false,
+   "generation": 2
+  },
+  {
+   "id": "@I6000000125805765831@",
+   "given": "Eero Valtter",
+   "surname": "Pyöriä",
+   "married": "Pyöriä",
+   "nick": "",
+   "name": "Eero Valtter Pyöriä",
+   "aka": [],
+   "sex": "M",
+   "birth": {
+    "date": {
+     "source": "4 MAY 1943",
+     "display": "4 May 1943",
+     "year": 1943,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "30 OCT 1994",
+     "display": "30 October 1994",
+     "year": 1994,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "burial": {
+    "date": null,
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000125805765831",
+   "parentFamily": "@F6000000074835087836@",
+   "spouseFamilies": [
+    "@F6000000196204696877@"
+   ],
+   "living": false,
+   "generation": 2
+  },
+  {
+   "id": "@I6000000085916412272@",
+   "surname": "Kaakkurivaara",
+   "sex": "F",
+   "living": true,
+   "generation": 2,
+   "parentFamily": "@F6000000087380701042@",
+   "spouseFamilies": [
+    "@F6000000084638739836@"
+   ],
+   "name": "Living Kaakkurivaara",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I6000000084637186248@",
+   "surname": "Pyöriä",
+   "sex": "M",
+   "living": true,
+   "generation": 2,
+   "parentFamily": "@F6000000074835087836@",
+   "spouseFamilies": [
+    "@F6000000084638739836@"
+   ],
+   "name": "Living Pyöriä",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I6000000014211058630@",
+   "given": "Raili Hellevi",
+   "surname": "Pyöriä",
+   "married": "Pitkälä",
+   "nick": "",
+   "name": "Raili Hellevi Pyöriä",
+   "aka": [],
+   "sex": "F",
+   "birth": {
+    "date": {
+     "source": "5 MAY 1937",
+     "display": "5 May 1937",
+     "year": 1937,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "death": {
+    "date": {
+     "source": "22 JUL 2013",
+     "display": "22 July 2013",
+     "year": 2013,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": "6000000014211058630",
+   "parentFamily": "@F6000000074835087836@",
+   "spouseFamilies": [
+    "@F6000000014211058633@"
+   ],
+   "living": false,
+   "generation": 2
+  },
+  {
+   "id": "@I6000000039155785300@",
+   "surname": "Pyöriä",
+   "sex": "M",
+   "living": true,
+   "generation": 3,
+   "parentFamily": "@F6000000084638739836@",
+   "spouseFamilies": [
+    "@F6000000176608934848@"
+   ],
+   "name": "Living Pyöriä",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I6000000109763305880@",
+   "surname": "Pyöriä",
+   "sex": "F",
+   "living": true,
+   "generation": 3,
+   "parentFamily": "@F6000000084638739836@",
+   "spouseFamilies": [],
+   "name": "Living Pyöriä",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I6000000085976427838@",
+   "surname": "Pyöriä",
+   "sex": "M",
+   "living": true,
+   "generation": 3,
+   "parentFamily": "@F6000000084638739836@",
+   "spouseFamilies": [],
+   "name": "Living Pyöriä",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I6000000176608934845@",
+   "surname": "Uolamo",
+   "sex": "F",
+   "living": true,
+   "generation": 3,
+   "parentFamily": null,
+   "spouseFamilies": [
+    "@F6000000176608934848@"
+   ],
+   "name": "Living Uolamo",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I9000000000000000001@",
+   "surname": "Uolamo",
+   "sex": "M",
+   "living": true,
+   "generation": 4,
+   "parentFamily": "@F6000000176608934848@",
+   "spouseFamilies": [],
+   "name": "Living Uolamo",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I9000000000000000002@",
+   "surname": "Uolamo",
+   "sex": "F",
+   "living": true,
+   "generation": 4,
+   "parentFamily": "@F6000000176608934848@",
+   "spouseFamilies": [],
+   "name": "Living Uolamo",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  },
+  {
+   "id": "@I9000000000000000003@",
+   "surname": "Uolamo",
+   "sex": "F",
+   "living": true,
+   "generation": 4,
+   "parentFamily": "@F6000000176608934848@",
+   "spouseFamilies": [],
+   "name": "Living Uolamo",
+   "given": "",
+   "married": "",
+   "nick": "",
+   "aka": [],
+   "birth": null,
+   "death": null,
+   "burial": null,
+   "occupation": null,
+   "notes": [],
+   "geniId": null
+  }
+ ],
+ "families": [
+  {
+   "id": "@F6000000014211058633@",
+   "husband": null,
+   "wife": "@I6000000014211058630@",
+   "children": [],
+   "relation": "partners",
+   "event": null,
+   "divorced": false
+  },
+  {
+   "id": "@F6000000018624726695@",
+   "husband": null,
+   "wife": null,
+   "children": [
+    "@I6000000087429432922@"
+   ],
+   "relation": "married",
+   "event": {
+    "date": {
+     "source": "5 JUL 1899",
+     "display": "5 July 1899",
+     "year": 1899,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Suomi",
+    "asserted": false
+   },
+   "divorced": false
+  },
+  {
+   "id": "@F6000000064453790925@",
+   "husband": null,
+   "wife": null,
+   "children": [
+    "@I6000000087381053877@"
+   ],
+   "relation": "married",
+   "event": {
+    "date": {
+     "source": "25 APR 1898",
+     "display": "25 April 1898",
+     "year": 1898,
+     "precision": "day"
+    },
+    "place": "Kemijärvi",
+    "asserted": false
+   },
+   "divorced": false
+  },
+  {
+   "id": "@F6000000074835087836@",
+   "husband": null,
+   "wife": "@I6000000074834385191@",
+   "children": [
+    "@I6000000014211058630@",
+    "@I6000000103683606821@",
+    "@I6000000125805765831@",
+    "@I6000000084637186248@"
+   ],
+   "relation": "partners",
+   "event": null,
+   "divorced": false
+  },
+  {
+   "id": "@F6000000084638739836@",
+   "husband": "@I6000000084637186248@",
+   "wife": "@I6000000085916412272@",
+   "children": [
+    "@I6000000109763305880@",
+    "@I6000000085976427838@",
+    "@I6000000039155785300@"
+   ],
+   "relation": "partners",
+   "event": null,
+   "divorced": false
+  },
+  {
+   "id": "@F6000000087380701042@",
+   "husband": "@I6000000087429432922@",
+   "wife": "@I6000000087381053877@",
+   "children": [
+    "@I6000000085916412272@"
+   ],
+   "relation": "married",
+   "event": {
+    "date": {
+     "source": "19 JUL 1947",
+     "display": "19 July 1947",
+     "year": 1947,
+     "precision": "day"
+    },
+    "place": "Kemijärvi, Finland",
+    "asserted": false
+   },
+   "divorced": false
+  },
+  {
+   "id": "@F6000000093177824827@",
+   "husband": "@I6000000093179262822@",
+   "wife": "@I6000000088841023239@",
+   "children": [
+    "@I6000000186642517904@",
+    "@I6000000074834385191@",
+    "@I6000000201282178821@",
+    "@I6000000186427746832@"
+   ],
+   "relation": "married",
+   "event": {
+    "date": {
+     "source": "26 JUL 1907",
+     "display": "26 July 1907",
+     "year": 1907,
+     "precision": "day"
+    },
+    "place": "Haapavesi, Finland",
+    "asserted": false
+   },
+   "divorced": false
+  },
+  {
+   "id": "@F6000000103683606827@",
+   "husband": null,
+   "wife": "@I6000000103683606821@",
+   "children": [],
+   "relation": "partners",
+   "event": null,
+   "divorced": false
+  },
+  {
+   "id": "@F6000000128977460839@",
+   "husband": null,
+   "wife": "@I6000000103683606821@",
+   "children": [],
+   "relation": "partners",
+   "event": null,
+   "divorced": false
+  },
+  {
+   "id": "@F6000000176608934848@",
+   "husband": "@I6000000039155785300@",
+   "wife": "@I6000000176608934845@",
+   "children": [
+    "@I9000000000000000001@",
+    "@I9000000000000000002@",
+    "@I9000000000000000003@"
+   ],
+   "relation": "engaged",
+   "event": {
+    "date": null,
+    "place": null,
+    "asserted": true
+   },
+   "divorced": false
+  },
+  {
+   "id": "@F6000000196204696877@",
+   "husband": "@I6000000125805765831@",
+   "wife": null,
+   "children": [],
+   "relation": "married",
+   "event": {
+    "date": {
+     "source": "22 DEC 1971",
+     "display": "22 December 1971",
+     "year": 1971,
+     "precision": "day"
+    },
+    "place": "Oulu, Pohjois-Pohjanmaa, Finland",
+    "asserted": false
+   },
+   "divorced": false
+  }
+ ]
+}

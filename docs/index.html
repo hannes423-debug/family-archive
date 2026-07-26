@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family Archive — the tree</title>
+<meta name="description" content="An interactive family tree built from a curated GEDCOM. Living people are shown by surname only.">
+<meta name="robots" content="noindex, noarchive">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌳</text></svg>">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">🌳</span>
+    <div>
+      <h1>Family Archive</h1>
+      <p class="brand-sub" id="subtitle">Loading the tree…</p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="search">
+      <input type="search" id="search" placeholder="Search a name…" autocomplete="off"
+             aria-label="Search for a person" spellcheck="false">
+      <ul id="results" class="results" role="listbox" hidden></ul>
+    </div>
+    <div class="zoom" role="group" aria-label="Zoom">
+      <button type="button" id="zoom-out" title="Zoom out">−</button>
+      <button type="button" id="zoom-fit" title="Fit the whole tree">Fit</button>
+      <button type="button" id="zoom-in" title="Zoom in">+</button>
+    </div>
+  </div>
+</header>
+
+<main id="stage" class="stage" tabindex="0" aria-label="Family tree, drag to pan and scroll to zoom">
+  <svg id="tree" role="img" aria-labelledby="tree-title">
+    <title id="tree-title">Family tree diagram</title>
+    <g id="viewport">
+      <g id="layer-links"></g>
+      <g id="layer-nodes"></g>
+    </g>
+  </svg>
+
+  <p class="hint" id="hint">Drag to pan · scroll to zoom · click anyone for details</p>
+  <div class="loading" id="loading">Loading…</div>
+</main>
+
+<aside class="panel" id="panel" hidden aria-live="polite">
+  <button type="button" class="panel-close" id="panel-close" aria-label="Close details">×</button>
+  <div id="panel-body"></div>
+</aside>
+
+<footer class="legend">
+  <span class="key"><i class="swatch swatch-m"></i>Male</span>
+  <span class="key"><i class="swatch swatch-f"></i>Female</span>
+  <span class="key"><i class="swatch swatch-living"></i>Living — surname only</span>
+  <span class="key note" id="privacy-note">
+    Living people are deliberately not published. <a href="./privacy.html">Why</a>
+  </span>
+</footer>
+
+<script src="./app.js"></script>
+</body>
+</html>

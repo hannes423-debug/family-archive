@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Refuse to publish anything that exposes a living person.
+
+Runs against a plain checkout — it needs no private data, which is the point:
+CI can run it on the public repo, where the source GEDCOM does not exist.
+
+    python3 tools/verify_public.py
+
+Exit status is non-zero on any finding, so it can gate the Pages deploy.
+"""
+import json, os, re, subprocess, sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TREE = os.path.join(ROOT, "docs", "data", "tree.json")
+PRIVATE = os.path.join(ROOT, "docs", "data", "tree.private.json")
+
+# A GEDCOM data line: a level number, a tag that carries personal content, and
+# an actual value after it, so it matches a real data line carrying names or
+# dates but not the bare tag name appearing as a string in parser code.
+# (Worded without an example on purpose: an example would match this pattern.)
+GEDCOM_LINE = re.compile(
+    r'(?:^|["\'\s])[0-9]\s+(NAME|GIVN|SURN|NICK|_MARNM|BIRT|DEAT|BURI|OCCU)\s+\S')
+
+TEXT_SUFFIXES = (".py", ".js", ".html", ".css", ".json", ".md", ".yml", ".yaml",
+                 ".txt", ".ged")
+
+# Fields that must be absent for anyone flagged living. Kept in sync with
+# build_site.PUBLIC_FIELDS_FOR_LIVING by this check failing loudly if it drifts.
+FORBIDDEN_SCALARS = ("given", "married", "nick", "occupation", "geniId")
+FORBIDDEN_OBJECTS = ("birth", "death", "burial")
+FORBIDDEN_LISTS = ("aka", "notes")
+
+problems = []
+
+
+def fail(msg):
+    problems.append(msg)
+
+
+def check_no_source_data_tracked():
+    """The raw GEDCOM and the unredacted build must never be in the tree."""
+    try:
+        tracked = subprocess.run(
+            ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout.splitlines()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("  (not a git checkout — skipping the tracked-files check)")
+        return
+
+    for path in tracked:
+        low = path.lower()
+        if low.endswith(".ged"):
+            fail(f"a GEDCOM is tracked: {path}")
+        if low.endswith("tree.private.json"):
+            fail(f"the unredacted build is tracked: {path}")
+        if low.startswith("data/"):
+            fail(f"private source data is tracked: {path}")
+
+
+def tracked_files():
+    try:
+        return subprocess.run(
+            ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout.splitlines()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def check_no_gedcom_content_in_tracked_files():
+    """Catch personal data smuggled in as code.
+
+    A curation script that writes GEDCOM lines carries the same names and dates
+    of birth as the GEDCOM itself, and a check that only looks at *.ged and
+    tree.json sails straight past it. This is that check.
+    """
+    files = tracked_files()
+    if files is None:
+        return
+    for path in files:
+        if not path.endswith(TEXT_SUFFIXES):
+            continue
+        full = os.path.join(ROOT, path)
+        if not os.path.exists(full):
+            continue
+        # The generator is allowed to contain the payload it produces.
+        if path == "docs/data/tree.json":
+            continue
+        try:
+            with open(full, encoding="utf-8") as fh:
+                for num, line in enumerate(fh, 1):
+                    if GEDCOM_LINE.search(line):
+                        fail(f"{path}:{num} looks like GEDCOM personal data: "
+                             f"{line.strip()[:70]}")
+        except (UnicodeDecodeError, OSError):
+            continue
+
+
+def check_no_living_names_in_tracked_files():
+    """Cross-check against the real answer, when the real answer is available.
+
+    tree.private.json only exists on a machine that has the source data, so
+    this is a pre-push check rather than a CI one — which is the right place
+    for it, because that is where a leak would be introduced.
+    """
+    if not os.path.exists(PRIVATE):
+        print("  (no local private build — skipping the living-name cross-check)")
+        return
+
+    with open(PRIVATE, encoding="utf-8") as fh:
+        private = json.load(fh)
+
+    # Names repeat across generations, so a token that also belongs to someone
+    # already published identifies nobody new — flagging it would only train
+    # the reader to ignore this check.
+    public_tokens = set()
+    for p in private.get("people", []):
+        if p.get("living"):
+            continue
+        for field in ("given", "surname", "married", "nick"):
+            public_tokens.update((p.get(field) or "").split())
+
+    needles = set()
+    for p in private.get("people", []):
+        if not p.get("living"):
+            continue
+        for field in ("given", "nick"):
+            for token in (p.get(field) or "").split():
+                if len(token) > 3 and token not in public_tokens:
+                    needles.add(token)
+        for ev in ("birth", "death"):
+            source = ((p.get(ev) or {}).get("date") or {}).get("source", "")
+            # A bare year is any number; a full date is a fingerprint.
+            if " " in source:
+                needles.add(source)
+    if not needles:
+        return
+
+    files = tracked_files()
+    if files is None:
+        return
+    for path in files:
+        if not path.endswith(TEXT_SUFFIXES):
+            continue
+        full = os.path.join(ROOT, path)
+        if not os.path.exists(full):
+            continue
+        try:
+            with open(full, encoding="utf-8") as fh:
+                body = fh.read()
+        except (UnicodeDecodeError, OSError):
+            continue
+        for needle in sorted(needles):
+            if re.search(r"\b" + re.escape(needle) + r"\b", body):
+                fail(f"{path} contains a living person's given name or date "
+                     f"(matched a {len(needle)}-character token)")
+                break
+
+    print(f"  cross-checked {len(files)} tracked files against "
+          f"{len(needles)} private tokens")
+
+
+def check_tree_json():
+    if not os.path.exists(TREE):
+        fail("docs/data/tree.json is missing — the site would deploy empty")
+        return
+
+    with open(TREE, encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    if not data.get("redacted"):
+        fail("tree.json is flagged redacted:false — this is the UNREDACTED build")
+
+    living = 0
+    for p in data.get("people", []):
+        if not p.get("living"):
+            continue
+        living += 1
+        pid = p.get("id", "?")
+        for field in FORBIDDEN_SCALARS:
+            if p.get(field):
+                fail(f"{pid}: living person still carries {field}={p[field]!r}")
+        for field in FORBIDDEN_OBJECTS:
+            if p.get(field):
+                fail(f"{pid}: living person still carries a {field} record")
+        for field in FORBIDDEN_LISTS:
+            if p.get(field):
+                fail(f"{pid}: living person still carries {field}")
+        name = p.get("name", "")
+        if not name.startswith("Living"):
+            fail(f"{pid}: living person's name is not masked ({name!r})")
+
+    # A marriage date identifies the living spouse just as well as a birth date.
+    people = {p["id"]: p for p in data.get("people", [])}
+    for f in data.get("families", []):
+        spouses = [s for s in (f.get("husband"), f.get("wife")) if s]
+        if not any(people.get(s, {}).get("living") for s in spouses):
+            continue
+        ev = f.get("event") or {}
+        if ev.get("date") or ev.get("place"):
+            fail(f"{f['id']}: family event exposes a date/place for a living couple")
+
+    print(f"  checked {len(data.get('people', []))} people "
+          f"({living} living) and {len(data.get('families', []))} families")
+
+
+def main():
+    print("verifying the public build...")
+    check_no_source_data_tracked()
+    check_no_gedcom_content_in_tracked_files()
+    check_tree_json()
+    check_no_living_names_in_tracked_files()
+
+    if problems:
+        print("\nREFUSING TO PUBLISH — %d problem(s):" % len(problems))
+        for p in problems:
+            print("  ✗", p)
+        sys.exit(1)
+
+    print("  no living person's data is present. Safe to publish.")
+
+
+if __name__ == "__main__":
+    main()

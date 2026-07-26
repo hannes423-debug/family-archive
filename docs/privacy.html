@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why living people are not shown — Family Archive</title>
+<meta name="robots" content="noindex, noarchive">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌳</text></svg>">
+<link rel="stylesheet" href="./styles.css">
+<style>
+  /* This page is prose, not a canvas — override the app's fixed-height shell. */
+  body { display: block; overflow: auto; }
+  .prose {
+    max-width: 62ch;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .prose h1 { font-size: 27px; letter-spacing: -.015em; margin: 0 0 6px; }
+  .prose .lede { color: var(--ink-soft); margin: 0 0 32px; font-size: 17px; }
+  .prose h2 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--ink-faint); margin: 34px 0 8px;
+  }
+  .prose p, .prose li { color: var(--ink); }
+  .prose ul { padding-left: 20px; }
+  .prose li { margin-bottom: 6px; }
+  .prose a { color: var(--accent); }
+  .prose code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .88em;
+    background: var(--accent-soft);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .back { display: inline-block; margin-bottom: 26px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="prose">
+
+  <a class="back" href="./">← Back to the tree</a>
+
+  <h1>Why living people are not shown</h1>
+  <p class="lede">
+    This site is public. The people in it are not all dead, and the ones who are
+    alive did not ask to be on the internet.
+  </p>
+
+  <p>
+    So the published tree shows living people by <strong>surname only</strong>.
+    Their given names, dates of birth, birth places, occupations and notes are
+    stripped out before anything is committed. You can see that they exist and
+    where they sit in the family — that is what makes the tree legible — but
+    nothing that identifies them individually is here.
+  </p>
+
+  <h2>How "living" is decided</h2>
+  <ul>
+    <li>A recorded death or burial means the person is treated as deceased and
+      is shown in full.</li>
+    <li>Otherwise, someone born more than 100 years ago is presumed deceased —
+      the same threshold Ancestry and MyHeritage use.</li>
+    <li><strong>Everyone else is treated as living</strong>, including anyone
+      with no dates recorded at all. When the data is ambiguous the rule errs
+      toward withholding, because the other kind of mistake publishes a real
+      person's details.</li>
+  </ul>
+
+  <h2>What that means in practice</h2>
+  <p>
+    The redaction happens in the generator, not in the browser. The published
+    <code>tree.json</code> never contains the withheld values, so they cannot be
+    recovered by reading the page source, disabling JavaScript, or fetching the
+    data file directly. There is no hidden field and no client-side filter to
+    switch off.
+  </p>
+  <p>
+    A deploy is also gated on an independent check that re-reads the generated
+    file and fails the build if a living person still carries a name, a date, a
+    place or a note. Nothing reaches this site if that check does not pass.
+  </p>
+
+  <h2>The source data</h2>
+  <p>
+    The underlying GEDCOM — the full, unredacted family record — is not in the
+    public repository and never has been. It lives offline. What is published
+    here is a derived, deliberately reduced view of it.
+  </p>
+
+  <h2>If you are in this tree</h2>
+  <p>
+    If you would rather not appear at all, even as a surname, that is a
+    reasonable thing to ask and it will be honoured. Ask the family member who
+    maintains this archive and the record will be removed from the published
+    view.
+  </p>
+
+  <p style="margin-top:36px"><a href="./">← Back to the tree</a></p>
+</div>
+</body>
+</html>

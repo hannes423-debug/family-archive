@@ -1,0 +1,178 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PENDING</title>
+<!-- Browser test for the published tree. Lives outside site/ so it is never
+     deployed, but stays same-origin with it when the repo root is served:
+
+       python3 -m http.server 8123
+       google-chrome --headless=new --disable-gpu --virtual-time-budget=20000 \
+         --dump-dom http://127.0.0.1:8123/tools/drivertest.html | grep -o '<title>[^<]*'
+
+     It drives the real page — real MouseEvents on real elements — rather than
+     testing the module in isolation, and asserts that no living person's data
+     reaches the rendered output. -->
+<iframe id="f" src="../docs/index.html" style="width:1400px;height:900px;border:0"></iframe>
+<pre id="log"></pre>
+<script>
+const results = [];
+const ok = (name, cond, extra = '') =>
+  results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ' :: ' + extra : ''}`);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Click the way the page actually receives it: a real bubbling MouseEvent on
+// the element, not a synthetic .click() on a wrapper.
+function realClick(el, win) {
+  const r = el.getBoundingClientRect();
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+    el.dispatchEvent(new win.MouseEvent(type, {
+      bubbles: true, cancelable: true, view: win,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+    }));
+  }
+}
+
+(async function run() {
+  const frame = document.getElementById('f');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+
+  // Wait for the async boot (fetch + layout + render) to finish.
+  for (let i = 0; i < 80 && !doc.querySelector('.node'); i++) await sleep(50);
+
+  const nodes = [...doc.querySelectorAll('.node')];
+  ok('renders every person', nodes.length === 20, `got ${nodes.length}`);
+  ok('loading indicator removed', !doc.getElementById('loading'));
+
+  // ── a deceased person opens with full detail ──────────────────────────────
+  const deceased = nodes.find((n) => !n.classList.contains('living'));
+  realClick(deceased, win);
+  await sleep(60);
+  const panel = doc.getElementById('panel');
+  ok('click opens the detail panel', !panel.hasAttribute('hidden'));
+  const h2 = panel.querySelector('h2');
+  ok('panel names the person', !!h2 && h2.textContent.trim().length > 0,
+     h2 && h2.textContent);
+  ok('deceased panel has no redaction notice', !panel.querySelector('.redacted'));
+  ok('selection highlights the node', deceased.classList.contains('selected'));
+  ok('unrelated nodes dim', doc.querySelectorAll('.node.dimmed').length > 0);
+
+  // ── relative links navigate ───────────────────────────────────────────────
+  const link = panel.querySelector('[data-goto]');
+  if (link) {
+    const before = panel.querySelector('h2').textContent;
+    realClick(link, win);
+    await sleep(60);
+    ok('relative link navigates', panel.querySelector('h2').textContent !== before);
+  } else {
+    ok('relative link navigates', false, 'no relative link found');
+  }
+
+  // ── a living person is masked, in the card and in the panel ───────────────
+  const living = nodes.find((n) => n.classList.contains('living'));
+  realClick(living, win);
+  await sleep(60);
+  ok('living panel explains the redaction', !!panel.querySelector('.redacted'));
+  ok('living panel shows no Born row',
+     ![...panel.querySelectorAll('dt')].some((d) => d.textContent === 'Born'));
+  ok('living card name starts with the mask',
+     living.querySelector('.nm').textContent.length > 0
+     && living.textContent.includes('living'));
+
+  // ── escape closes ─────────────────────────────────────────────────────────
+  doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(60);
+  ok('escape closes the panel', panel.hasAttribute('hidden'));
+  ok('escape clears dimming', doc.querySelectorAll('.node.dimmed').length === 0);
+
+  // ── search ────────────────────────────────────────────────────────────────
+  const input = doc.getElementById('search');
+  input.value = 'pirttisalo';
+  input.dispatchEvent(new win.Event('input', { bubbles: true }));
+  await sleep(60);
+  const hits = [...doc.querySelectorAll('#results li[data-id]')];
+  ok('search finds a surname', hits.length >= 4, `${hits.length} hits`);
+
+  // Diacritic folding: "pyoria" must find "Pyöriä".
+  input.value = 'pyoria';
+  input.dispatchEvent(new win.Event('input', { bubbles: true }));
+  await sleep(60);
+  ok('search folds diacritics',
+     doc.querySelectorAll('#results li[data-id]').length > 0);
+
+  input.value = 'zzzznobody';
+  input.dispatchEvent(new win.Event('input', { bubbles: true }));
+  await sleep(60);
+  ok('search handles no match', !!doc.querySelector('#results .r-empty'));
+
+  // ── zoom actually changes the transform ───────────────────────────────────
+  const vp = doc.getElementById('viewport');
+  const t0 = vp.getAttribute('transform');
+  realClick(doc.getElementById('zoom-in'), win);
+  await sleep(60);
+  const t1 = vp.getAttribute('transform');
+  ok('zoom in changes the view', t0 !== t1);
+  realClick(doc.getElementById('zoom-fit'), win);
+  await sleep(60);
+  ok('fit changes the view again', vp.getAttribute('transform') !== t1);
+
+  const scale = parseFloat(/scale\(([-\d.]+)\)/.exec(vp.getAttribute('transform'))[1]);
+  ok('fit scale is sane', scale > 0.15 && scale <= 1.25, `scale=${scale.toFixed(3)}`);
+
+  // ── nothing about a living person may reach the output ────────────────────
+  //
+  // Checked structurally rather than against a list of names: writing the
+  // children's real names into a public test file to assert they are absent
+  // would leak exactly what it claims to protect. This also stays correct when
+  // the family grows.
+  const payload = await (await win.fetch('./data/tree.json')).json();
+  const livingIds = new Set(payload.people.filter((p) => p.living).map((p) => p.id));
+  ok('the payload has living people to protect', livingIds.size > 0,
+     `${livingIds.size} living`);
+
+  const fieldLeaks = payload.people.filter((p) => p.living).filter((p) =>
+    p.given || p.married || p.nick || p.occupation || p.geniId
+    || p.birth || p.death || p.burial
+    || (p.aka && p.aka.length) || (p.notes && p.notes.length));
+  ok('served payload holds no living person fields', fieldLeaks.length === 0,
+     fieldLeaks.map((p) => p.id).join(','));
+
+  ok('every living name is masked',
+     payload.people.filter((p) => p.living).every((p) => /^Living\b/.test(p.name)));
+
+  // A year anywhere on a living person's card would be a date that escaped.
+  const livingCards = [...doc.querySelectorAll('.node.living')];
+  const withYear = livingCards.filter((n) => /\b(1[89]|20)\d\d\b/.test(n.textContent));
+  ok('no living card shows a year', withYear.length === 0,
+     `${withYear.length} of ${livingCards.length}`);
+
+  // Open every living person in turn and confirm the panel stays empty of facts.
+  let badPanels = 0;
+  for (const card of livingCards) {
+    realClick(card, win);
+    await sleep(25);
+    const hasFacts = [...panel.querySelectorAll('dt')]
+      .some((d) => ['Born', 'Died', 'Buried', 'Occupation', 'Known as']
+        .includes(d.textContent));
+    if (hasFacts || !panel.querySelector('.redacted')) badPanels++;
+  }
+  ok('every living panel withholds every fact', badPanels === 0,
+     `${badPanels} of ${livingCards.length} wrong`);
+
+  // And a deceased person must still show real detail, or the redaction has
+  // simply eaten the whole site and the tests above would pass vacuously.
+  const anyDeceased = nodes.find((n) => !n.classList.contains('living'));
+  realClick(anyDeceased, win);
+  await sleep(40);
+  ok('deceased people still show real detail',
+     [...panel.querySelectorAll('dt')].some((d) => d.textContent === 'Born'));
+
+  document.getElementById('log').textContent = results.join('\n');
+  const failed = results.filter((r) => r.startsWith('FAIL')).length;
+  document.title = `DONE ${results.length - failed}/${results.length}`;
+})().catch((e) => {
+  document.getElementById('log').textContent = 'THREW: ' + e.stack;
+  document.title = 'THREW';
+});
+</script>
