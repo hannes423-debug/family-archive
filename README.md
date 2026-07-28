@@ -83,6 +83,11 @@ asserting the privacy invariant structurally rather than against a list of names
   synthetic tree **identically, field for field**, that both satisfy a set of
   expectations written independently of either, and that ten deliberately
   planted leaks are each caught. Needs `node`. Runs in the pre-push hook.
+  Its fixture uses Greek-letter given names and invented places on purpose: a
+  plausible Finnish name eventually collides with a living relative's, the
+  pre-push leak check then blocks the push, and the tempting fix is to weaken
+  the check. `check_fixture_is_fictional()` catches that here instead, and
+  reports which fixture person to rename rather than the name that matched.
 
 ```bash
 python3 -m http.server 8123 &

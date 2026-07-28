@@ -16,9 +16,13 @@ through both redactors, and fails if they disagree on a single field. Node is
 required because `visibility.js` is the browser's copy and is tested as such
 rather than reimplemented here.
 
-The tree is synthetic on purpose. It uses invented names, so it can be checked
-into a public repository and read by anyone, and so a failure prints a diff that
-is safe to paste anywhere.
+The tree is synthetic on purpose. Given names are Finnish spellings of Greek
+letters and the surnames and places are invented, so the fixture is recognisably
+people and recognisably nobody. That is not decoration: a plausible Finnish name
+WILL eventually collide with a real living relative's, at which point the
+pre-push leak check blocks the push and the obvious-looking fix is to weaken the
+check. `check_fixture_is_fictional` below catches that here instead, where the
+answer is to rename a fixture rather than to argue with a guard.
 """
 import datetime
 import json
@@ -66,43 +70,43 @@ def build_fixture():
 
     people = [
         # Plainly deceased, published in full. The control.
-        person("@P1@", given="Aatos", surname="Untola", sex="M",
-               birth=dated(long_ago, "Nivala"), death=dated(long_ago + 70, "Haapavesi"),
+        person("@P1@", given="Alfa", surname="Ääkkölä", sex="M",
+               birth=dated(long_ago, "Esimerkkilä"), death=dated(long_ago + 70, "Näytekylä"),
                occupation="seppä", notes=["A parish book reference."],
                geniId="123", media=["a.jpg"], photo="a.jpg", generation=0,
                spouseFamilies=["@F1@"]),
 
         # Living by every route: recent birth, no death.
-        person("@P2@", given="Vilja", surname="Untola", sex="F",
-               birth=dated(lately, "Oulu"), notes=["Should never be published."],
+        person("@P2@", given="Beeta", surname="Ääkkölä", sex="F",
+               birth=dated(lately, "Tyhjölä"), notes=["Should never be published."],
                generation=1, parentFamily="@F1@"),
 
         # Withheld entirely, and deceased. Sits between P1/P5 and P4, so the
         # tree has to reach across them.
-        person("@P3@", given="Rauha", surname="Untola", sex="F",
+        person("@P3@", given="Gamma", surname="Ääkkölä", sex="F",
                birth=dated(long_ago + 40), death=dated(long_ago + 110),
                occupation="opettaja", media=["b.jpg"], photo="b.jpg",
                visibility="hidden", generation=1,
                parentFamily="@F1@", spouseFamilies=["@F2@"]),
 
         # Withheld entirely, and living. Must not be handed an asserted death.
-        person("@P4@", given="Onni", surname="Untola", sex="M",
+        person("@P4@", given="Delta", surname="Ääkkölä", sex="M",
                birth=dated(lately), visibility="hidden", generation=2,
                parentFamily="@F2@"),
 
         # The "name and dates only" preset.
-        person("@P5@", given="Kaarlo", surname="Sipovaara", sex="M",
-               birth=dated(long_ago + 20, "Kemijärvi"),
-               death=dated(long_ago + 95, "Kemijärvi"),
-               burial={"date": None, "place": "Kemijärvi", "asserted": True},
+        person("@P5@", given="Epsilon", surname="Öölampi", sex="M",
+               birth=dated(long_ago + 20, "Mallikylä"),
+               death=dated(long_ago + 95, "Mallikylä"),
+               burial={"date": None, "place": "Mallikylä", "asserted": True},
                occupation="suutari", notes=["Withheld note."], geniId="456",
                media=["c.jpg"], photo="c.jpg", generation=0,
                visibility="limited", spouseFamilies=["@F1@"]),
 
         # Individually withheld fields, mixed with published ones.
-        person("@P6@", given="Elina", surname="Sipovaara", sex="F",
-               birth=dated(long_ago + 25, "Kemijärvi"),
-               death=dated(long_ago + 100, "Rovaniemi"),
+        person("@P6@", given="Zeeta", surname="Öölampi", sex="F",
+               birth=dated(long_ago + 25, "Mallikylä"),
+               death=dated(long_ago + 100, "Kuvitteela"),
                occupation="emäntä", notes=["Kept."],
                hideFields=["birthPlace", "occupation"], generation=0,
                spouseFamilies=["@F3@"]),
@@ -110,18 +114,18 @@ def build_fixture():
         # THE INTERESTING ONE. Deceased only by the hundred-year presumption,
         # then asked to withhold the birth date that presumed it. Both sides
         # must repair this the same way or the record contradicts itself.
-        person("@P7@", given="Hilma", surname="Talvensaari", sex="F",
-               birth=dated(THIS_YEAR - 120, "Kemijärvi"),
+        person("@P7@", given="Eeta", surname="Yrjänvaara", sex="F",
+               birth=dated(THIS_YEAR - 120, "Mallikylä"),
                hideFields=["birth"], generation=0),
 
         # Withholding the given names, leaving a surname.
-        person("@P8@", given="Juho Heikki", surname="Talvensaari", sex="M",
-               nick="Jussi", aka=["Juho Talvensaari"],
+        person("@P8@", given="Theeta Ioota", surname="Yrjänvaara", sex="M",
+               nick="Theetta", aka=["Theeta Ääkkölä"],
                birth=dated(long_ago), death=dated(long_ago + 60),
                hideFields=["given"], generation=0, spouseFamilies=["@F3@"]),
 
         # Married to a living person; deceased and published himself.
-        person("@P9@", given="Väinö", surname="Kaakkurivaara", sex="M",
+        person("@P9@", given="Kappa", surname="Zirkkala", sex="M",
                birth=dated(long_ago + 60), death=dated(long_ago + 130),
                generation=1, spouseFamilies=["@F4@"]),
     ]
@@ -129,22 +133,22 @@ def build_fixture():
     families = [
         {"id": "@F1@", "husband": "@P1@", "wife": "@P5@",
          "children": ["@P2@", "@P3@"], "childOrder": ["@P2@", "@P3@"],
-         "relation": "married", "event": dated(long_ago + 25, "Nivala"),
+         "relation": "married", "event": dated(long_ago + 25, "Esimerkkilä"),
          "divorced": False},
         # A marriage whose only spouse is withheld: the event must go too.
         {"id": "@F2@", "husband": "@P3@", "wife": None,
          "children": ["@P4@"], "childOrder": ["@P4@"],
-         "relation": "married", "event": dated(long_ago + 60, "Oulu"),
+         "relation": "married", "event": dated(long_ago + 60, "Tyhjölä"),
          "divorced": False},
         {"id": "@F3@", "husband": "@P8@", "wife": "@P6@",
          "children": [], "childOrder": [],
-         "relation": "married", "event": dated(long_ago + 30, "Kemijärvi"),
+         "relation": "married", "event": dated(long_ago + 30, "Mallikylä"),
          "divorced": False},
         # A marriage with a LIVING spouse: the date identifies them as surely
         # as their own birth date would, so it goes.
         {"id": "@F4@", "husband": "@P9@", "wife": "@P2@",
          "children": [], "childOrder": [],
-         "relation": "married", "event": dated(THIS_YEAR - 12, "Oulu"),
+         "relation": "married", "event": dated(THIS_YEAR - 12, "Tyhjölä"),
          "divorced": False},
     ]
     return people, families
@@ -243,13 +247,13 @@ def expectations(out):
             problems.append(msg)
 
     p1 = by_id["@P1@"]
-    check(p1["given"] == "Aatos", "P1: a published person lost their given name")
+    check(p1["given"] == "Alfa", "P1: a published person lost their given name")
     check(p1["occupation"] == "seppä", "P1: a published person lost their occupation")
     check(p1["notes"], "P1: a published person lost their notes")
 
     p2 = by_id["@P2@"]
     check(p2["living"] is True, "P2: a recent birth did not derive as living")
-    check(p2["name"] == "Living Untola", f"P2: name is {p2['name']!r}")
+    check(p2["name"] == "Living Ääkkölä", f"P2: name is {p2['name']!r}")
     check(not p2["given"] and not p2["birth"] and not p2["notes"],
           "P2: a living person kept detail")
 
@@ -270,7 +274,7 @@ def expectations(out):
           "P4: a LIVING withheld person was given a death assertion — that is a false claim")
 
     p5 = by_id["@P5@"]
-    check(p5["given"] == "Kaarlo", "P5: 'name and dates only' removed the name")
+    check(p5["given"] == "Epsilon", "P5: 'name and dates only' removed the name")
     check(p5["birth"] and p5["birth"]["date"], "P5: 'name and dates only' removed the dates")
     check(p5["birth"]["place"] is None, "P5: 'name and dates only' kept the birth place")
     check(p5["burial"] is None, "P5: 'name and dates only' kept the burial")
@@ -281,14 +285,14 @@ def expectations(out):
     p6 = by_id["@P6@"]
     check(p6["birth"]["place"] is None, "P6: withheld birth place survived")
     check(p6["birth"]["date"] is not None, "P6: withholding a place removed the date too")
-    check(p6["death"]["place"] == "Rovaniemi", "P6: an unwithheld death place was removed")
+    check(p6["death"]["place"] == "Kuvitteela", "P6: an unwithheld death place was removed")
     check(p6["occupation"] is None, "P6: withheld occupation survived")
     check(p6["notes"], "P6: withholding one field removed an unrelated one")
 
     p7 = by_id["@P7@"]
     check(p7["birth"] is None or p7["birth"]["date"] is None,
           "P7: withheld birth date survived")
-    check(p7["birth"] and p7["birth"]["place"] == "Kemijärvi",
+    check(p7["birth"] and p7["birth"]["place"] == "Mallikylä",
           "P7: withholding the birth DATE also removed the birth PLACE, "
           "which was not withheld")
     check(p7["living"] is False,
@@ -299,8 +303,8 @@ def expectations(out):
     p8 = by_id["@P8@"]
     check(not p8["given"] and not p8["nick"] and not p8["aka"],
           "P8: withheld given names survived")
-    check(p8["surname"] == "Talvensaari", "P8: withholding given names took the surname")
-    check(p8["name"] == "Talvensaari", f"P8: name is {p8['name']!r}")
+    check(p8["surname"] == "Yrjänvaara", "P8: withholding given names took the surname")
+    check(p8["name"] == "Yrjänvaara", f"P8: name is {p8['name']!r}")
 
     fams = {f["id"]: f for f in out["families"]}
     # F1's spouses are both published and deceased. A living or withheld CHILD
@@ -357,9 +361,9 @@ def negative_tests():
     def find(out, pid):
         return next(p for p in out["people"] if p["id"] == pid)
 
-    leaked(lambda o: find(o, "@P3@").update(name="Rauha Untola"),
+    leaked(lambda o: find(o, "@P3@").update(name="Gamma Ääkkölä"),
            "a withheld person given their name back")
-    leaked(lambda o: find(o, "@P3@").update(surname="Untola"),
+    leaked(lambda o: find(o, "@P3@").update(surname="Ääkkölä"),
            "a withheld person given their surname back")
     leaked(lambda o: find(o, "@P3@").update(sex="F"),
            "a withheld person given their sex back")
@@ -367,16 +371,68 @@ def negative_tests():
            "a withheld person given a photograph back")
     leaked(lambda o: find(o, "@P3@")["death"].update(date=dated(1900)["date"]),
            "a withheld person given a death date")
-    leaked(lambda o: find(o, "@P2@").update(given="Vilja"),
+    leaked(lambda o: find(o, "@P2@").update(given="Beeta"),
            "a living person given their name back")
     leaked(lambda o: find(o, "@P6@").update(occupation="emäntä"),
            "a withheld field put back while still marked withheld")
-    leaked(lambda o: find(o, "@P5@")["birth"].update(place="Kemijärvi"),
+    leaked(lambda o: find(o, "@P5@")["birth"].update(place="Mallikylä"),
            "a place withheld by the 'name and dates only' preset put back")
-    leaked(lambda o: o["families"][1].update(event=dated(1900, "Oulu")),
+    leaked(lambda o: o["families"][1].update(event=dated(1900, "Tyhjölä")),
            "a marriage date restored for a withheld spouse")
     leaked(lambda o: find(o, "@P7@").update(death=None),
            "a presumed-dead person left deriving as living")
+    return problems
+
+
+def check_fixture_is_fictional(people):
+    """The fixture must not accidentally name a real living person.
+
+    This file is committed to a public repository, so a fixture name that
+    happens to match a living relative's given name is a leak — and the
+    pre-push hook will say so, at the worst possible moment and in a way that
+    makes weakening the hook look like the fix. Catch it here instead, where
+    the answer is obviously to rename a fixture.
+
+    Only runs where the private build exists, which is the only place the real
+    answer is known; elsewhere it quietly passes, exactly like the pre-push
+    cross-check it is standing in for.
+    """
+    private = os.path.join(ROOT, "docs", "data", "tree.private.json")
+    if not os.path.exists(private):
+        return []
+
+    with open(private, encoding="utf-8") as fh:
+        real = json.load(fh)
+
+    # A name already published for someone deceased identifies nobody new.
+    published = set()
+    for p in real.get("people", []):
+        if p.get("living"):
+            continue
+        for field in ("given", "surname", "married", "nick"):
+            published.update((p.get(field) or "").split())
+
+    sensitive = set()
+    for p in real.get("people", []):
+        if not p.get("living"):
+            continue
+        for field in ("given", "nick"):
+            for token in (p.get(field) or "").split():
+                if len(token) > 3 and token not in published:
+                    sensitive.add(token.lower())
+
+    # Reports which fixture PERSON to rename, never the token that matched:
+    # in a collision the offending token is a living person's given name, and
+    # printing it would put it into terminal scrollback and CI logs.
+    problems = []
+    for p in people:
+        tokens = set()
+        for field in ("given", "surname", "married", "nick"):
+            tokens.update(t.lower() for t in (p.get(field) or "").split())
+        tokens.update(t.lower() for name in p.get("aka") or [] for t in name.split())
+        if tokens & sensitive:
+            problems.append(f"{p['id']}: one of its names matches a living person's "
+                            f"given name — rename it in build_fixture()")
     return problems
 
 
@@ -390,6 +446,12 @@ def main():
     print(f"  {len(people)} synthetic people, {len(families)} families")
 
     failures = []
+
+    fictional = check_fixture_is_fictional(people)
+    if fictional:
+        failures.append(("the fixture names a real living person", fictional))
+    else:
+        print("  the fixture names nobody real")
 
     drift = compare(py, js)
     if drift:
