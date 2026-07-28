@@ -46,9 +46,27 @@ function typeInto(input, win, value) {
   ok('edit bar hidden until asked', doc.getElementById('editbar').hidden);
   ok('panel is read-only by default', T.onPanel === null);
 
+  // ── a visitor is offered nothing to edit with ─────────────────────────────
+  ok('role starts as guest', E.role === 'guest');
+  ok('guest sees no edit toggle', doc.getElementById('edit-toggle').hidden);
+  ok('guest sees the sign-in key', !doc.getElementById('unlock').hidden);
+  click(doc.getElementById('edit-toggle'), win);
+  await sleep(60);
+  ok('a guest cannot reach edit mode by clicking the hidden toggle',
+     T.onPanel === null && doc.getElementById('editbar').hidden);
+
   const before = T.data.people.length;
 
   // ── enter edit mode ───────────────────────────────────────────────────────
+  // No token here, so the private repository is unreachable and the editor
+  // falls back to working on the public tree — which is the mode the rest of
+  // this suite asserts against.
+  await E.becomeAdmin();
+  await sleep(60);
+  ok('archivist sees the edit toggle', !doc.getElementById('edit-toggle').hidden);
+  ok('archivist sees no sign-in key', doc.getElementById('unlock').hidden);
+  ok('without a private repo the working copy stays the public one',
+     E.fullRecord === false);
   click(doc.getElementById('edit-toggle'), win);
   await sleep(60);
   ok('edit bar appears', !doc.getElementById('editbar').hidden);
@@ -401,6 +419,82 @@ function typeInto(input, win, value) {
   ok('payload with Finnish characters is encodable', !!encoded && !threw, threw || '');
   ok('payload really does contain non-ASCII',
      /[äöÄÖ]/.test(JSON.stringify(payload)));
+
+  // ── withholding a person ──────────────────────────────────────────────────
+  const subject = T.data.people.find(
+    (p) => !p.living && p.given && p.notes && p.notes.length);
+  T.select(subject.id);
+  await sleep(60);
+  const vbody = doc.getElementById('panel-body');
+
+  ok('the form offers a visibility level', !!vbody.querySelector('[name="vis-level"]'));
+  ok('the form offers per-field withholding', !!vbody.querySelector('[data-hide]'));
+  ok('the form previews what a visitor sees', !!vbody.querySelector('.vis-preview'));
+
+  // Withhold one field, and check it is the only thing that goes.
+  const occBox = vbody.querySelector('[data-hide="occupation"]');
+  occBox.checked = true;
+  occBox.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(80);
+
+  let out = E.redactForPublication();
+  let shown = out.people.find((p) => p.id === subject.id);
+  ok('a withheld occupation does not reach the public tree', !shown.occupation);
+  ok('withholding one field leaves the rest', !!shown.given && !!shown.notes.length);
+  ok('the working copy still holds the withheld value',
+     T.data.people.find((p) => p.id === subject.id).occupation
+       === subject.occupation || !subject.occupation);
+
+  // Now withhold the person entirely.
+  T.select(subject.id);
+  await sleep(60);
+  const hideRadio = doc.getElementById('panel-body')
+    .querySelector('[name="vis-level"][value="hidden"]');
+  hideRadio.checked = true;
+  hideRadio.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(90);
+
+  out = E.redactForPublication();
+  shown = out.people.find((p) => p.id === subject.id);
+  ok('a withheld person keeps no name', shown.name === 'Withheld' && !shown.surname);
+  ok('a withheld person keeps no given name', !shown.given);
+  ok('a withheld person keeps no dates',
+     !shown.birth && !(shown.death && shown.death.date));
+  ok('a withheld person keeps no notes or photographs',
+     !shown.notes.length && !shown.media.length && !shown.photo);
+  ok('a withheld person keeps no sex', shown.sex === 'U');
+  ok('a withheld person keeps their place in the tree',
+     shown.parentFamily === subject.parentFamily);
+  ok('the whole payload still verifies with someone withheld',
+     E.verify(E.buildPayload(), E.buildMediaPayload()).length === 0,
+     E.verify(E.buildPayload(), E.buildMediaPayload()).join(' | '));
+
+  const withheldCard = doc.querySelector(`.node[data-id="${CSS.escape(subject.id)}"]`)
+    || [...doc.querySelectorAll('.node')].find((n) => n.dataset.id === subject.id);
+  ok('the withheld card is drawn but unlabelled',
+     !!withheldCard && withheldCard.classList.contains('withheld')
+     && !/[A-Za-zÄÖäö]{3}/.test(
+          [...withheldCard.querySelectorAll('.nm')].map((t) => t.textContent).join('')
+            .replace(/withheld/i, '')));
+
+  // Withholding must never be a display-only trick: prove the value is absent
+  // from the bytes that would actually be committed, not merely undrawn.
+  const wire = JSON.stringify(E.buildPayload());
+  ok('the withheld name is absent from the serialised payload',
+     !wire.includes(subject.given), subject.given);
+
+  // Put them back.
+  T.select(subject.id);
+  await sleep(60);
+  const showRadio = doc.getElementById('panel-body')
+    .querySelector('[name="vis-level"][value="public"]');
+  showRadio.checked = true;
+  showRadio.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await sleep(90);
+  shown = E.redactForPublication().people.find((p) => p.id === subject.id);
+  ok('un-withholding restores the record', shown.name === subject.name);
+  ok('un-withholding does not silently restore a separately withheld field',
+     !shown.occupation);
 
   // ── a draft survives a reload ─────────────────────────────────────────────
   ok('draft was written to localStorage',

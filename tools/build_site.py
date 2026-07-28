@@ -233,6 +233,13 @@ def build(ged_path, this_year):
                 "geniId": (rec.val("RFN") or "").replace("geni:", "") or None,
                 "parentFamily": rec.val("FAMC") or None,
                 "spouseFamilies": [c.value for c in rec.all("FAMS") if c.value],
+                # A GEDCOM import withholds nothing of its own accord; these
+                # exist so a fresh build has the same shape as a browser-edited
+                # one, and are then the archivist's to set.
+                "media": [],
+                "photo": None,
+                "visibility": "public",
+                "hideFields": [],
             }
         elif rec.tag == "FAM" and rec.xref:
             ev = event(rec, "MARR") or event(rec, "ENGA")
@@ -264,26 +271,30 @@ def build(ged_path, this_year):
     return people, families
 
 
-def mark_living(people, this_year):
+def derive_living(p, this_year):
     """A dated death proves death. An undated one is trusted unless the person
     was born recently. Otherwise a birth long enough ago presumes it. Everyone
     else — including everyone with no dates at all — is treated as living,
     because guessing wrong in that direction is the one that publishes a real
-    person's data."""
-    for p in people.values():
-        byear = (p["birth"] or {}).get("date") or {}
-        byear = byear.get("year")
-        born_recently = bool(byear) and (this_year - byear) < ASSERTION_FLOOR_YEARS
+    person's data.
 
-        dated_death = ((p["death"] or {}).get("date")
-                       or (p["burial"] or {}).get("date"))
-        if dated_death:
-            p["living"] = False
-            continue
-        if (p["death"] or p["burial"]) and not born_recently:
-            p["living"] = False
-            continue
-        p["living"] = not (byear and this_year - byear >= PRESUMED_DEAD_AFTER_YEARS)
+    Mirrors deriveLiving() in docs/visibility.js and verify_public.py. The three
+    must move together."""
+    byear = ((p.get("birth") or {}).get("date") or {}).get("year")
+    born_recently = bool(byear) and (this_year - byear) < ASSERTION_FLOOR_YEARS
+
+    dated_death = ((p.get("death") or {}).get("date")
+                   or (p.get("burial") or {}).get("date"))
+    if dated_death:
+        return False
+    if (p.get("death") or p.get("burial")) and not born_recently:
+        return False
+    return not (byear and this_year - byear >= PRESUMED_DEAD_AFTER_YEARS)
+
+
+def mark_living(people, this_year):
+    for p in people.values():
+        p["living"] = derive_living(p, this_year)
 
 
 def assign_generations(people, families):
@@ -335,37 +346,124 @@ def assign_generations(people, families):
 PUBLIC_FIELDS_FOR_LIVING = ("id", "surname", "sex", "living", "generation",
                             "parentFamily", "spouseFamilies")
 
+# A withheld person keeps less than a living one: a position in the tree, and
+# nothing that is about them. Mirrors docs/visibility.js HIDDEN_KEEPS.
+PUBLIC_FIELDS_FOR_HIDDEN = ("id", "generation", "parentFamily", "spouseFamilies")
 
-def redact(people, families):
-    """Reduce every living person to a surname and their edges.
+# What "name and dates only" expands to. Mirrors docs/visibility.js.
+LIMITED_HIDES = ("birthPlace", "deathPlace", "burial",
+                 "occupation", "notes", "media", "geniId")
+
+
+def effective_hides(p):
+    hides = set(LIMITED_HIDES) if p.get("visibility") == "limited" else set()
+    hides.update(p.get("hideFields") or [])
+    return hides
+
+
+def blank_person():
+    """Every field a person can carry, emptied. The base of both whitelists."""
+    return {"given": "", "surname": "", "married": "", "nick": "", "aka": [],
+            "birth": None, "death": None, "burial": None,
+            "occupation": None, "notes": [], "geniId": None,
+            "media": [], "photo": None}
+
+
+def redact(people, families, this_year):
+    """Reduce every person to what may actually be published about them.
+
+    Three reasons, applied in that order because the earlier ones are absolute:
+    the archivist withheld them entirely; they are living; or particular facts
+    about them were withheld.
 
     Deliberately a whitelist, not a blacklist: a field added to the model later
     is excluded by default instead of silently leaking on the next build.
     """
     redacted = 0
+    hidden_count = 0
+
     for pid, p in list(people.items()):
-        if not p["living"]:
+        if p.get("visibility") == "hidden":
+            kept = {k: p[k] for k in PUBLIC_FIELDS_FOR_HIDDEN}
+            kept.update(blank_person())
+            kept["hidden"] = True
+            kept["visibility"] = "hidden"
+            kept["hideFields"] = []
+            kept["living"] = p["living"]
+            kept["sex"] = "U"
+            kept["name"] = "Withheld"
+            # A blank record re-derives as living, which for a deceased person
+            # would put every downstream guard at odds with this one. The bare
+            # "died, date unknown" assertion is what the record already means.
+            kept["death"] = (None if p["living"]
+                             else {"date": None, "place": None, "asserted": True})
+            people[pid] = kept
+            hidden_count += 1
+            redacted += 1
             continue
-        kept = {k: p[k] for k in PUBLIC_FIELDS_FOR_LIVING}
-        kept["name"] = f"Living {p['surname']}".strip() or "Living"
-        kept["given"] = ""
-        kept["married"] = ""
-        kept["nick"] = ""
-        kept["aka"] = []
-        kept["birth"] = kept["death"] = kept["burial"] = None
-        kept["occupation"] = None
-        kept["notes"] = []
-        kept["geniId"] = None
-        people[pid] = kept
+
+        if p["living"]:
+            kept = {k: p[k] for k in PUBLIC_FIELDS_FOR_LIVING}
+            kept.update(blank_person())
+            kept["hidden"] = False
+            kept["visibility"] = "public"
+            kept["hideFields"] = []
+            kept["surname"] = p["surname"]
+            kept["name"] = f"Living {p['surname']}".strip() or "Living"
+            people[pid] = kept
+            redacted += 1
+            continue
+
+        hides = effective_hides(p)
+        p["hidden"] = False
+        p["visibility"] = p.get("visibility") or "public"
+        p["hideFields"] = sorted(hides)
+        if not hides:
+            continue
+
+        if "given" in hides:
+            p["given"] = p["nick"] = ""
+            p["aka"] = []
+        for key, field in (("birth", "birth"), ("death", "death")):
+            if key in hides and p[field]:
+                p[field] = dict(p[field], date=None)
+        for key, field in (("birthPlace", "birth"), ("deathPlace", "death")):
+            if key in hides and p[field]:
+                p[field] = dict(p[field], place=None)
+        if "burial" in hides:
+            p["burial"] = None
+        if "occupation" in hides:
+            p["occupation"] = None
+        if "notes" in hides:
+            p["notes"] = []
+        if "media" in hides:
+            p["media"] = []
+            p["photo"] = None
+        if "geniId" in hides:
+            p["geniId"] = None
+
+        # An event with nothing left in it is a husk; drop it.
+        for field in ("birth", "death", "burial"):
+            ev = p[field]
+            if ev and not ev.get("date") and not ev.get("place") and not ev.get("asserted"):
+                p[field] = None
+
+        p["name"] = " ".join(x for x in (p["given"], p["surname"]) if x) \
+            or p["surname"] or "Unknown"
+
+        # Hiding a birth date can remove the very thing that presumed the death.
+        if derive_living(p, this_year):
+            p["death"] = {"date": None, "place": None, "asserted": True}
         redacted += 1
 
-    # A marriage date is also a living person's data when either spouse is
-    # living, so the family event goes too.
+    # A marriage date is also a living or withheld person's data when either
+    # spouse is one, so the family event goes too.
     for f in families.values():
         spouses = [s for s in (f["husband"], f["wife"]) if s]
-        if any(people[s]["living"] for s in spouses) and f["event"]:
+        exposed = any(people[s]["living"] or people[s].get("hidden") for s in spouses)
+        if exposed and f["event"]:
             f["event"] = {"date": None, "place": None, "asserted": True}
-    return redacted
+    return redacted, hidden_count
 
 
 # ── output ───────────────────────────────────────────────────────────────────
@@ -408,10 +506,10 @@ def main():
 
     if args.include_living:
         out_path = os.path.join(OUT_DIR, "tree.private.json")
-        redacted = 0
+        redacted = withheld = 0
     else:
         out_path = os.path.join(OUT_DIR, "tree.json")
-        redacted = redact(people, families)
+        redacted, withheld = redact(people, families, args.year)
 
     payload = {
         "generated": datetime.datetime.now(datetime.timezone.utc)
@@ -422,6 +520,7 @@ def main():
             "people": len(people),
             "families": len(families),
             "living": living,
+            "withheld": withheld,
             "redacted": redacted,
             "generations": (max(p["generation"] for p in people.values()) + 1) if people else 0,
         },
@@ -441,7 +540,8 @@ def main():
     if args.include_living:
         print(f"  !! UNREDACTED — {living} living people in full. Do not commit.")
     else:
-        print(f"  {redacted} living people redacted to surname only")
+        print(f"  {redacted} record(s) redacted "
+              f"({living} living, {withheld} withheld entirely)")
         leaked = verify_no_leak(payload)
         if leaked:
             sys.exit("REFUSING TO SHIP: living data present in public build:\n  " +
@@ -451,22 +551,56 @@ def main():
 
 def verify_no_leak(payload):
     """Belt and braces — re-read the actual emitted payload and prove that no
-    living person carries an identifying field. The redactor and this check are
-    written independently on purpose."""
+    living or withheld person carries an identifying field, and that nothing
+    marked withheld survived. The redactor and this check are written
+    independently on purpose."""
     problems = []
     for p in payload["people"]:
-        if not p.get("living"):
+        if p.get("hidden"):
+            for field in ("given", "surname", "married", "nick", "occupation",
+                          "geniId", "photo"):
+                if p.get(field):
+                    problems.append(f"{p['id']} is withheld but still has {field}")
+            for field in ("birth", "burial"):
+                if p.get(field):
+                    problems.append(f"{p['id']} is withheld but still has a {field}")
+            death = p.get("death") or {}
+            if death.get("date") or death.get("place"):
+                problems.append(f"{p['id']} is withheld but its death has a date/place")
+            if p.get("aka") or p.get("notes") or p.get("media"):
+                problems.append(f"{p['id']} is withheld but still has aka/notes/media")
+            if p.get("sex") not in (None, "", "U"):
+                problems.append(f"{p['id']} is withheld but still has a sex")
+            if p.get("name") != "Withheld":
+                problems.append(f"{p['id']} is withheld but named {p.get('name')!r}")
             continue
-        for field in ("given", "married", "nick", "occupation", "geniId"):
-            if p.get(field):
-                problems.append(f"{p['id']} still has {field}={p[field]!r}")
-        for field in ("birth", "death", "burial"):
-            if p.get(field):
-                problems.append(f"{p['id']} still has a {field} record")
-        if p.get("aka") or p.get("notes"):
-            problems.append(f"{p['id']} still has aka/notes")
-        if p.get("name", "") and not p["name"].startswith("Living"):
-            problems.append(f"{p['id']} name not masked: {p['name']!r}")
+
+        if p.get("living"):
+            for field in ("given", "married", "nick", "occupation", "geniId"):
+                if p.get(field):
+                    problems.append(f"{p['id']} still has {field}={p[field]!r}")
+            for field in ("birth", "death", "burial"):
+                if p.get(field):
+                    problems.append(f"{p['id']} still has a {field} record")
+            if p.get("aka") or p.get("notes") or p.get("media") or p.get("photo"):
+                problems.append(f"{p['id']} still has aka/notes/media")
+            if p.get("name", "") and not p["name"].startswith("Living"):
+                problems.append(f"{p['id']} name not masked: {p['name']!r}")
+            continue
+
+        hides = effective_hides(p)
+        birth, death = p.get("birth") or {}, p.get("death") or {}
+        present = {
+            "given": p.get("given") or p.get("nick") or p.get("aka"),
+            "birth": birth.get("date"), "birthPlace": birth.get("place"),
+            "death": death.get("date"), "deathPlace": death.get("place"),
+            "burial": p.get("burial"), "occupation": p.get("occupation"),
+            "notes": p.get("notes"),
+            "media": p.get("media") or p.get("photo"), "geniId": p.get("geniId"),
+        }
+        for key in sorted(hides):
+            if present.get(key):
+                problems.append(f"{p['id']} withheld {key} but it is still present")
     return problems
 
 

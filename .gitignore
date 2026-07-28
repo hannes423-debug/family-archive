@@ -66,3 +66,6 @@ docs/data/tree.private.json
 # whatever folder structure suits you — including folder names that would not
 # be safe to publish, since a path leaks as surely as a file does.
 /Family photos/
+
+# Python bytecode from the tools
+__pycache__/

@@ -16,12 +16,42 @@
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-const CARD_W = 204;
-const CARD_H = 80;
+// The redaction rules, shared with the editor and the test suites. This file
+// only ever reads them — deciding what is publishable is not the viewer's job.
+const V = window.Visibility;
+
 const SPOUSE_GAP = 26;   // between the two cards of a couple
 const UNIT_GAP = 34;     // between neighbouring units in a layer
-const GEN_H = 200;       // vertical distance between generations
-const BUS_DROP = 58;     // how far below a couple the sibling bus line sits
+
+/**
+ * Two ways to draw a person. The compact card is the dense one, which is what
+ * lets five generations fit on a screen at once; the portrait card spends that
+ * space on a face and the years under it, which is what people actually
+ * recognise a relative by. Everything downstream reads the four dimensions, so
+ * switching is a relayout and nothing more.
+ */
+const MODES = {
+  compact:  { CARD_W: 204, CARD_H: 80,  GEN_H: 200, BUS_DROP: 58 },
+  portrait: { CARD_W: 204, CARD_H: 152, GEN_H: 286, BUS_DROP: 76 },
+};
+const MODE_KEY = 'familyArchive.view.v1';
+
+let viewMode = 'compact';
+let CARD_W, CARD_H, GEN_H, BUS_DROP;
+
+function applyMode(mode) {
+  viewMode = MODES[mode] ? mode : 'compact';
+  ({ CARD_W, CARD_H, GEN_H, BUS_DROP } = MODES[viewMode]);
+  document.body.dataset.view = viewMode;
+}
+
+// ?view=portrait wins over the remembered choice, so a shared link can carry
+// the card style the sender was looking at.
+applyMode(new URLSearchParams(location.search).get('view')
+  || localStorage.getItem(MODE_KEY) || 'compact');
+
+// The portrait circle, in card-local coordinates.
+const FACE = { cx: 102, cy: 44, r: 30 };
 
 const el = (id) => document.getElementById(id);
 const svg = el('tree');
@@ -64,10 +94,25 @@ function refreshMedia() {
   if (btn) btn.textContent = `\u{1F5BC} ${(MEDIA.items || []).length}`;
 }
 
-/** Photographs attached to a person. Living people never have any. */
+/** Photographs attached to a person. Living and withheld people never have any. */
 function mediaFor(p) {
-  if (!p || p.living || !Array.isArray(p.media)) return [];
+  if (!p || p.living || p.hidden || !Array.isArray(p.media)) return [];
   return p.media.map((f) => MEDIA.byFile.get(f)).filter(Boolean);
+}
+
+/**
+ * The portrait to show on a card: the one chosen as primary, else the first
+ * portrait attached, else nothing. Never for a living or withheld person —
+ * `mediaFor` has already returned empty for them.
+ */
+function portraitFor(p) {
+  const shots = mediaFor(p);
+  if (!shots.length) return null;
+  if (p.photo) {
+    const chosen = shots.find((m) => m.file === p.photo);
+    if (chosen) return chosen;
+  }
+  return shots.find((m) => m.kind === 'portrait') || null;
 }
 
 async function load() {
@@ -87,8 +132,32 @@ async function load() {
 
 // ── model ────────────────────────────────────────────────────────────────────
 
+/**
+ * Fill in fields that older payloads predate, so the rest of the code can stop
+ * asking whether they are there. `hidden` is always re-derived from
+ * `visibility` rather than trusted, because the two disagreeing is exactly the
+ * kind of thing that ends up publishing someone.
+ */
+function normalise(data) {
+  for (const p of data.people) {
+    if (!Array.isArray(p.media)) p.media = [];
+    if (!Array.isArray(p.hideFields)) p.hideFields = [];
+    if (!Array.isArray(p.aka)) p.aka = [];
+    if (!Array.isArray(p.notes)) p.notes = [];
+    if (!Array.isArray(p.spouseFamilies)) p.spouseFamilies = [];
+    if (typeof p.visibility !== 'string') p.visibility = p.hidden ? 'hidden' : 'public';
+    if (p.photo === undefined) p.photo = null;
+    p.hidden = p.visibility === 'hidden';
+  }
+  for (const f of data.families) {
+    if (!Array.isArray(f.children)) f.children = [];
+  }
+  return data;
+}
+
 function index(data) {
   P.clear(); F.clear();
+  normalise(data);
   data.people.forEach((p) => P.set(p.id, p));
   data.families.forEach((f) => F.set(f.id, f));
 
@@ -266,6 +335,7 @@ function make(tag, attrs, parent) {
 }
 
 function lifeYears(p) {
+  if (p.hidden) return '';
   if (p.living) return 'living';
   const b = p.birth && p.birth.date && p.birth.date.year;
   const d = p.death && p.death.date && p.death.date.year;
@@ -273,6 +343,30 @@ function lifeYears(p) {
   if (b) return `b. ${b}`;
   if (d) return `d. ${d}`;
   return '';
+}
+
+/** True when a fact is absent because it was withheld, not because it is unknown. */
+function withheld(p, field) {
+  return !p.hidden && !p.living && (p.hideFields || []).includes(field);
+}
+
+/** The three lines of a card: what to call them, and what to say about dates. */
+function cardLines(p) {
+  if (p.hidden) {
+    return { top: '—', mid: 'withheld', foot: 'not published' };
+  }
+  if (p.living) {
+    return { top: p.surname || '—', mid: 'living', foot: 'details withheld' };
+  }
+  const years = lifeYears(p);
+  const deathOnly = p.death && p.death.asserted && !years;
+  const datesHidden = withheld(p, 'birth') && withheld(p, 'death');
+  return {
+    top: p.surname || p.name,
+    mid: p.given || '',
+    foot: years || (datesHidden ? 'dates withheld'
+      : (deathOnly ? 'died, date unknown' : 'dates unknown')),
+  };
 }
 
 function render(layout) {
@@ -330,39 +424,23 @@ function render(layout) {
   for (const p of DATA.people) {
     const pos = POS.get(p.id);
     if (!pos) continue;
-    const sexClass = p.living ? 'living' : ({ M: 'm', F: 'f' }[p.sex] || 'u');
+    const sexClass = (p.living || p.hidden)
+      ? (p.hidden ? 'withheld' : 'living')
+      : ({ M: 'm', F: 'f' }[p.sex] || 'u');
     const g = make('g', {
-      class: `node ${sexClass}${p.living ? ' living' : ''}`,
+      class: `node ${sexClass}${p.living ? ' living' : ''}${p.hidden ? ' withheld' : ''}`,
       transform: `translate(${pos.x - CARD_W / 2}, ${pos.y - CARD_H / 2})`,
       tabindex: '0', role: 'button',
-      'aria-label': `${p.name}${lifeYears(p) ? ', ' + lifeYears(p) : ''}`,
+      'aria-label': p.hidden ? 'A person whose details are withheld'
+        : `${p.name}${lifeYears(p) ? ', ' + lifeYears(p) : ''}`,
     }, gNodes);
     g.dataset.id = p.id;
 
     make('rect', { class: 'card', x: 0, y: 0, width: CARD_W, height: CARD_H }, g);
-    make('rect', { class: 'sexbar', x: 0, y: 8, width: 4, height: CARD_H - 16 }, g);
 
-    // Surname first. Finnish patronymics ("Anna Emilia Matiaksentytar") are long
-    // enough that a single-line name truncates the surname off the end, which is
-    // the one part of the label a family tree cannot afford to lose.
-    make('text', { class: 'nm', x: 16, y: 27 }, g)
-      .textContent = fit(p.surname || p.name, 23);
-
-    make('text', { class: 'gv', x: 16, y: 46 }, g)
-      .textContent = p.living ? 'living' : fit(p.given || '', 26);
-
-    const deathOnly = !p.living && p.death && p.death.asserted && !lifeYears(p);
-    make('text', { class: 'dt', x: 16, y: 66 }, g)
-      .textContent = p.living ? 'details withheld'
-        : (lifeYears(p) || (deathOnly ? 'died, date unknown' : 'dates unknown'));
-
-    if (p.living) {
-      make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
-        .textContent = '\u{1F512}';
-    } else if (mediaFor(p).length) {
-      make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
-        .textContent = '\u{1F5BC}';
-    }
+    const lines = cardLines(p);
+    if (viewMode === 'portrait') drawPortraitCard(g, p, lines);
+    else drawCompactCard(g, p, lines);
   }
 
   // Deliberately no viewBox: SVG user units stay 1:1 with CSS pixels so the
@@ -370,7 +448,80 @@ function render(layout) {
   return { width, height: layout.maxGen * GEN_H + CARD_H };
 }
 
+/** The dense card: a sex stripe and three lines of text, no image. */
+function drawCompactCard(g, p, lines) {
+  make('rect', { class: 'sexbar', x: 0, y: 8, width: 4, height: CARD_H - 16 }, g);
+
+  // Surname first. Finnish patronymics ("Anna Emilia Matiaksentytar") are long
+  // enough that a single-line name truncates the surname off the end, which is
+  // the one part of the label a family tree cannot afford to lose.
+  make('text', { class: 'nm', x: 16, y: 27 }, g).textContent = fit(lines.top, 23);
+  make('text', { class: 'gv', x: 16, y: 46 }, g).textContent = fit(lines.mid, 26);
+  make('text', { class: 'dt', x: 16, y: 66 }, g).textContent = lines.foot;
+
+  const badge = cardBadge(p);
+  if (badge) {
+    make('text', { class: 'lock', x: CARD_W - 13, y: 24, 'text-anchor': 'end' }, g)
+      .textContent = badge;
+  }
+}
+
+/**
+ * The portrait card: a face, the name, the years.
+ *
+ * `mediaFor` is what decides whether there is an image, and it returns nothing
+ * for a living or withheld person — so the silhouette here is not a fallback
+ * for "no photograph on file", it is the only thing those two can ever get.
+ */
+function drawPortraitCard(g, p, lines) {
+  const shot = portraitFor(p);
+
+  make('circle', { class: 'face-ring', cx: FACE.cx, cy: FACE.cy, r: FACE.r }, g);
+  if (shot) {
+    make('image', {
+      class: 'face',
+      href: mediaSrc(shot),
+      x: FACE.cx - FACE.r, y: FACE.cy - FACE.r,
+      width: FACE.r * 2, height: FACE.r * 2,
+      preserveAspectRatio: 'xMidYMid slice',
+      'clip-path': 'url(#face-clip)',
+    }, g);
+  } else {
+    // A head-and-shoulders silhouette, drawn rather than fetched so it costs
+    // nothing and cannot fail to load.
+    make('path', {
+      class: 'face-blank',
+      d: `M ${FACE.cx} ${FACE.cy - 13} m -8 0 a 8 8 0 1 1 16 0 a 8 8 0 1 1 -16 0`
+       + ` M ${FACE.cx - 15} ${FACE.cy + 19} a 15 13 0 0 1 30 0 z`,
+      'clip-path': 'url(#face-clip)',
+    }, g);
+  }
+
+  make('text', { class: 'nm', x: CARD_W / 2, y: 100, 'text-anchor': 'middle' }, g)
+    .textContent = fit(lines.top, 24);
+  make('text', { class: 'gv', x: CARD_W / 2, y: 119, 'text-anchor': 'middle' }, g)
+    .textContent = fit(lines.mid, 27);
+  make('text', { class: 'dt', x: CARD_W / 2, y: 139, 'text-anchor': 'middle' }, g)
+    .textContent = lines.foot;
+
+  const badge = cardBadge(p);
+  if (badge) {
+    make('text', { class: 'lock', x: CARD_W - 12, y: 22, 'text-anchor': 'end' }, g)
+      .textContent = badge;
+  }
+}
+
+/** The corner marker: why this card is thin, or that there is more to see. */
+function cardBadge(p) {
+  if (p.hidden) return '\u{1F6AB}';                     // withheld entirely
+  if (p.living) return '\u{1F512}';                     // living, surname only
+  if ((p.hideFields || []).length) return '\u{1F576}';  // partly withheld
+  if (mediaFor(p).length) return '\u{1F5BC}';           // has photographs
+  return '';
+}
+
 function fit(text, max) {
+  text = String(text || '');
   return text.length <= max ? text : text.slice(0, max - 1).trimEnd() + '…';
 }
 
@@ -501,6 +652,8 @@ function wireStage() {
   el('zoom-in').addEventListener('click', () => zoomBy(1.25));
   el('zoom-out').addEventListener('click', () => zoomBy(1 / 1.25));
   el('zoom-fit').addEventListener('click', () => fitView());
+  el('view-compact').addEventListener('click', () => setViewMode('compact'));
+  el('view-portrait').addEventListener('click', () => setViewMode('portrait'));
 
   let resizeTimer;
   window.addEventListener('resize', () => {
@@ -554,6 +707,7 @@ function select(id, { centre = false } = {}) {
   highlightSelection(id);
   showPanel(P.get(id));
   if (centre) centreOn(id, Math.max(view.k, 0.75));
+  syncUrl(id);
   hideHint();
 }
 
@@ -562,6 +716,7 @@ function clearSelection() {
   for (const node of gNodes.children) node.classList.remove('selected', 'dimmed');
   for (const link of gLinks.children) link.classList.remove('highlight');
   el('panel').setAttribute('hidden', '');
+  syncUrl(null);
 }
 
 function wireNodes() {
@@ -637,16 +792,28 @@ function showPanel(p) {
 
   const out = [];
 
-  out.push(`<h2>${esc(p.name)}</h2>`);
+  out.push(`<h2>${esc(p.hidden ? 'Withheld' : p.name)}</h2>`);
   const years = lifeYears(p);
   if (years && !p.living) out.push(`<p class="lifespan">${esc(years)}</p>`);
 
-  if (p.living) {
+  if (p.hidden) {
+    out.push('<p class="redacted"><strong>This person is not published.</strong> '
+      + 'The archivist has withheld their record entirely. They are drawn here '
+      + 'only so the relatives on either side of them still join up — no name, '
+      + 'no dates and no photograph for them exists anywhere on this site.</p>');
+  } else if (p.living) {
     out.push('<p class="lifespan">Living</p>');
     out.push('<p class="redacted"><strong>Details withheld.</strong> '
       + 'This person is alive, so their given names, dates and places are kept '
       + 'out of the published site. The full record exists in the private '
       + 'archive.</p>');
+  } else if ((p.hideFields || []).length) {
+    const names = (p.hideFields || [])
+      .map((k) => (V.FIELDS.find((f) => f.key === k) || {}).label || k);
+    out.push('<p class="redacted"><strong>Some details are withheld.</strong> '
+      + `Not published for this person: ${esc(names.join(', ').toLowerCase())}. `
+      + 'Withheld is not the same as unknown — these facts are recorded, and '
+      + 'the archivist has chosen not to publish them.</p>');
   }
 
   if (p.aka && p.aka.length) {
@@ -659,9 +826,12 @@ function showPanel(p) {
   const died = eventLine(p.death);
   const buried = eventLine(p.burial);
   if (born) facts.push(['Born', born]);
+  else if (withheld(p, 'birth')) facts.push(['Born', '— withheld —']);
   if (died) facts.push(['Died', died]);
+  else if (withheld(p, 'death')) facts.push(['Died', '— withheld —']);
   if (buried) facts.push(['Buried', buried]);
   if (p.occupation) facts.push(['Occupation', p.occupation]);
+  else if (withheld(p, 'occupation')) facts.push(['Occupation', '— withheld —']);
   if (p.married && p.married !== p.surname) facts.push(['Married name', p.married]);
   if (p.nick) facts.push(['Known as', p.nick]);
   if (facts.length) {
@@ -705,13 +875,20 @@ function showPanel(p) {
       + `rel="noopener noreferrer">Geni profile ${esc(p.geniId)}</a></p></section>`);
   }
 
+  out.push('<section class="share-row">'
+    + '<button type="button" class="mini" id="share-person">Share this page</button>'
+    + '</section>');
+
   body.innerHTML = out.join('');
   panel.removeAttribute('hidden');
+  panel.classList.remove('editing');
   panel.scrollTop = 0;
 
   body.querySelectorAll('[data-goto]').forEach((btn) => {
     btn.addEventListener('click', () => select(btn.dataset.goto, { centre: true }));
   });
+  const share = el('share-person');
+  if (share) share.addEventListener('click', () => sharePerson(p.id, share));
   wireLightbox(body);
 }
 
@@ -929,7 +1106,8 @@ function rebuild({ keepView = true, repaintPanel = true } = {}) {
     people: DATA.people.length,
     families: DATA.families.length,
     living: DATA.people.filter((p) => p.living).length,
-    redacted: DATA.people.filter((p) => p.living).length,
+    withheld: DATA.people.filter((p) => p.hidden).length,
+    redacted: DATA.people.filter((p) => p.living || p.hidden).length,
     generations: DATA.people.length
       ? Math.max(...DATA.people.map((p) => p.generation)) + 1 : 0,
   };
@@ -944,10 +1122,100 @@ function rebuild({ keepView = true, repaintPanel = true } = {}) {
 }
 
 function updateSubtitle() {
-  const s = DATA.stats;
+  // Counted from the people actually loaded rather than read from the payload's
+  // `stats`, which an older or hand-edited file may not carry.
+  const s = {
+    people: DATA.people.length,
+    families: DATA.families.length,
+    living: DATA.people.filter((p) => p.living && !p.hidden).length,
+    withheld: DATA.people.filter((p) => p.hidden).length,
+    generations: DATA.people.length
+      ? Math.max(...DATA.people.map((p) => p.generation)) + 1 : 0,
+  };
+  const kept = [];
+  if (s.living) kept.push(`${s.living} living`);
+  if (s.withheld) kept.push(`${s.withheld} withheld`);
   el('subtitle').textContent =
     `${s.people} people · ${s.families} families · ${s.generations} generations`
-    + (DATA.redacted ? ` · ${s.living} living kept private` : ' · UNREDACTED LOCAL BUILD');
+    + (DATA.redacted
+        ? (kept.length ? ` · ${kept.join(' and ')} kept private` : '')
+        : ' · UNREDACTED LOCAL BUILD');
+}
+
+/** Switch card style. A full relayout, because the card box changed size. */
+function setViewMode(mode) {
+  if (mode === viewMode) return;
+  applyMode(mode);
+  try { localStorage.setItem(MODE_KEY, viewMode); } catch (_) { /* private mode */ }
+  paintViewButtons();
+  rebuild({ keepView: false });
+}
+
+function paintViewButtons() {
+  const a = el('view-compact');
+  const b = el('view-portrait');
+  if (!a || !b) return;
+  a.classList.toggle('active', viewMode === 'compact');
+  b.classList.toggle('active', viewMode === 'portrait');
+  a.setAttribute('aria-pressed', String(viewMode === 'compact'));
+  b.setAttribute('aria-pressed', String(viewMode === 'portrait'));
+}
+
+// ── sharing ──────────────────────────────────────────────────────────────────
+
+/**
+ * A link to one person. Anyone may hold one — it addresses a card in a public
+ * tree, and following it shows exactly what the site would have shown anyway.
+ * Nothing about a withheld or living person becomes reachable through it.
+ */
+function shareUrl(id) {
+  const u = new URL(location.href);
+  u.hash = '';
+  // Never carry the local unredacted build's flag into a link meant for others.
+  u.searchParams.delete('private');
+  if (id) u.searchParams.set('person', id); else u.searchParams.delete('person');
+  if (viewMode === 'portrait') u.searchParams.set('view', 'portrait');
+  else u.searchParams.delete('view');
+  return u.toString();
+}
+
+/** Keep the address bar pointing at the selection, without stacking history. */
+function syncUrl(id) {
+  try { history.replaceState(null, '', shareUrl(id)); } catch (_) { /* file:// */ }
+}
+
+/**
+ * Share, or fall back to the clipboard, or fall back to selecting the text.
+ * `navigator.share` needs a user gesture and a secure context, and `clipboard`
+ * needs permission — on a phone the first works and on a desktop the second
+ * does, so both paths are load-bearing rather than belt-and-braces.
+ */
+async function sharePerson(id, button) {
+  const p = P.get(id);
+  const url = shareUrl(id);
+  const title = p && !p.hidden && !p.living ? p.name : 'Family Archive';
+  const say = (msg) => {
+    if (!button) return;
+    const was = button.textContent;
+    button.textContent = msg;
+    setTimeout(() => { button.textContent = was; }, 1800);
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+      return;
+    } catch (err) {
+      // AbortError means they closed the sheet on purpose; say nothing.
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    say('Link copied');
+  } catch (_) {
+    window.prompt('Copy this link', url);
+  }
 }
 
 // Surface for editor.js, which is a separate classic script. An explicit
@@ -958,8 +1226,11 @@ window.Tree = {
   P, F, POS,
   rebuild, select, clearSelection, showPanel, fitView, centreOn, highlightSelection,
   lifeYears, eventLine, esc, linkify, personButton, listSection, mediaSrc,
-  get media() { return MEDIA; }, mediaFor, refreshMedia,
+  get media() { return MEDIA; }, mediaFor, refreshMedia, portraitFor,
   wireLightbox, openLightbox, openGallery,
+  cardLines, cardBadge, withheld, normalise,
+  setViewMode, paintViewButtons, get viewMode() { return viewMode; },
+  shareUrl, sharePerson,
   get selectedId() { return selectedId; },
   onPanel: null,   // editor.js installs a renderer here
 };
@@ -998,7 +1269,15 @@ window.Tree = {
   wireStage();
   wireNodes();
   wireSearch();
+  paintViewButtons();
   fitView();
+
+  // A shared link opens on the person it names. An id that is no longer in the
+  // tree — deleted, or withheld and then renumbered — just opens the tree.
+  const wanted = new URLSearchParams(location.search).get('person');
+  if (wanted && P.has(wanted)) select(wanted, { centre: true });
+  else if (wanted) syncUrl(null);
+
   setTimeout(hideHint, 6000);
 
   // editor.js is a separate script and may parse either side of this point,

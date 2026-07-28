@@ -39,9 +39,45 @@ FORBIDDEN_SCALARS = ("given", "married", "nick", "occupation", "geniId")
 FORBIDDEN_OBJECTS = ("birth", "death", "burial")
 FORBIDDEN_LISTS = ("aka", "notes", "media")
 
-# Mirrors docs/editor.js and build_site.py. Anyone marked deceased must actually
-# satisfy the rule — a tree.json edited in the browser, or by hand, does not get
-# to simply assert it.
+# A person the archivist withheld entirely keeps less than a living one: only a
+# structural position, so the tree still joins up across them. Mirrors
+# docs/visibility.js HIDDEN_KEEPS.
+HIDDEN_FORBIDDEN_SCALARS = FORBIDDEN_SCALARS + ("surname", "photo")
+HIDDEN_FORBIDDEN_LISTS = FORBIDDEN_LISTS
+
+# The facts that may be withheld one at a time, and how to find each one in a
+# published record. Mirrors docs/visibility.js FIELDS.
+def _present(p, key):
+    birth = p.get("birth") or {}
+    death = p.get("death") or {}
+    return {
+        "given":      p.get("given") or p.get("nick") or p.get("aka"),
+        "birth":      birth.get("date"),
+        "birthPlace": birth.get("place"),
+        "death":      death.get("date"),
+        "deathPlace": death.get("place"),
+        "burial":     p.get("burial"),
+        "occupation": p.get("occupation"),
+        "notes":      p.get("notes"),
+        "media":      p.get("media") or p.get("photo"),
+        "geniId":     p.get("geniId"),
+    }.get(key)
+
+
+# What "name and dates only" expands to. Mirrors docs/visibility.js.
+LIMITED_HIDES = ("birthPlace", "deathPlace", "burial",
+                 "occupation", "notes", "media", "geniId")
+
+
+def effective_hides(p):
+    hides = set(LIMITED_HIDES) if p.get("visibility") == "limited" else set()
+    hides.update(p.get("hideFields") or [])
+    return hides
+
+
+# Mirrors docs/visibility.js and build_site.py. Anyone marked deceased must
+# actually satisfy the rule — a tree.json edited in the browser, or by hand,
+# does not get to simply assert it.
 PRESUMED_DEAD_AFTER_YEARS = 100
 ASSERTION_FLOOR_YEARS = 25
 
@@ -353,42 +389,86 @@ def check_tree_json():
         fail("tree.json is flagged redacted:false — this is the UNREDACTED build")
 
     living = 0
-    for p in data.get("people", []):
-        if not p.get("living"):
-            continue
-        living += 1
-        pid = p.get("id", "?")
-        for field in FORBIDDEN_SCALARS:
-            if p.get(field):
-                fail(f"{pid}: living person still carries {field}={p[field]!r}")
-        for field in FORBIDDEN_OBJECTS:
-            if p.get(field):
-                fail(f"{pid}: living person still carries a {field} record")
-        for field in FORBIDDEN_LISTS:
-            if p.get(field):
-                fail(f"{pid}: living person still carries {field}")
-        name = p.get("name", "")
-        if not name.startswith("Living"):
-            fail(f"{pid}: living person's name is not masked ({name!r})")
-
+    hidden = 0
+    limited = 0
     this_year = datetime.date.today().year
+
+    for p in data.get("people", []):
+        pid = p.get("id", "?")
+
+        # A person withheld entirely. Checked before the living rule, because
+        # they must carry less than a living person does, not the same.
+        if p.get("hidden") or p.get("visibility") == "hidden":
+            hidden += 1
+            if not (p.get("hidden") and p.get("visibility") == "hidden"):
+                fail(f"{pid}: hidden flag and visibility disagree — "
+                     f"hidden={p.get('hidden')!r} visibility={p.get('visibility')!r}")
+            for field in HIDDEN_FORBIDDEN_SCALARS:
+                if p.get(field):
+                    fail(f"{pid}: withheld person still carries {field}={p[field]!r}")
+            for field in HIDDEN_FORBIDDEN_LISTS:
+                if p.get(field):
+                    fail(f"{pid}: withheld person still carries {field}")
+            for field in ("birth", "burial"):
+                if p.get(field):
+                    fail(f"{pid}: withheld person still carries a {field} record")
+            death = p.get("death") or {}
+            if death.get("date") or death.get("place"):
+                fail(f"{pid}: withheld person's death record carries a date or place")
+            if p.get("sex") not in (None, "", "U"):
+                fail(f"{pid}: withheld person still carries sex={p.get('sex')!r}")
+            if p.get("name") != "Withheld":
+                fail(f"{pid}: withheld person's name is {p.get('name')!r}")
+            continue
+
+        if p.get("living"):
+            living += 1
+            for field in FORBIDDEN_SCALARS:
+                if p.get(field):
+                    fail(f"{pid}: living person still carries {field}={p[field]!r}")
+            for field in FORBIDDEN_OBJECTS:
+                if p.get(field):
+                    fail(f"{pid}: living person still carries a {field} record")
+            for field in FORBIDDEN_LISTS:
+                if p.get(field):
+                    fail(f"{pid}: living person still carries {field}")
+            if p.get("photo"):
+                fail(f"{pid}: living person still has a portrait")
+            name = p.get("name", "")
+            if not name.startswith("Living"):
+                fail(f"{pid}: living person's name is not masked ({name!r})")
+            continue
+
+        # Published, but perhaps not in full. Whatever was withheld must be gone.
+        hides = effective_hides(p)
+        if hides:
+            limited += 1
+        for key in sorted(hides):
+            if _present(p, key):
+                fail(f"{pid}: {key} is marked withheld but was published anyway")
+
     for p in data.get("people", []):
         if p.get("living") != derive_living(p, this_year):
             fail(f"{p.get('id')}: living flag disagrees with the record "
                  f"(flagged {p.get('living')})")
 
-    # A marriage date identifies the living spouse just as well as a birth date.
+    # A marriage date identifies a withheld or living spouse just as well as a
+    # birth date would.
     people = {p["id"]: p for p in data.get("people", [])}
     for f in data.get("families", []):
         spouses = [s for s in (f.get("husband"), f.get("wife")) if s]
-        if not any(people.get(s, {}).get("living") for s in spouses):
+        exposed = [s for s in spouses
+                   if people.get(s, {}).get("living") or people.get(s, {}).get("hidden")]
+        if not exposed:
             continue
         ev = f.get("event") or {}
         if ev.get("date") or ev.get("place"):
-            fail(f"{f['id']}: family event exposes a date/place for a living couple")
+            fail(f"{f['id']}: family event exposes a date/place for a "
+                 f"withheld or living couple")
 
     print(f"  checked {len(data.get('people', []))} people "
-          f"({living} living) and {len(data.get('families', []))} families")
+          f"({living} living, {hidden} withheld, {limited} partly withheld) "
+          f"and {len(data.get('families', []))} families")
 
 
 def main():

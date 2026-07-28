@@ -75,9 +75,14 @@ asserting the privacy invariant structurally rather than against a list of names
   that no living person's data reaches the rendered output.
 - `tools/editortest.html` — the editor: every field the form must refuse, that
   status changes strip data in both directions, that adding relatives grows the
-  tree correctly, that photographs can be attached only to the deceased, and
-  that `verify()` catches a tampered payload rather than merely passing a clean
-  one.
+  tree correctly, that photographs can be attached only to the deceased, that a
+  guest is offered no way in, that withholding a person removes them from the
+  bytes that would actually be committed, and that `verify()` catches a tampered
+  payload rather than merely passing a clean one.
+- `tools/crosscheck.py` — that `docs/visibility.js` and `build_site.py` redact a
+  synthetic tree **identically, field for field**, that both satisfy a set of
+  expectations written independently of either, and that ten deliberately
+  planted leaks are each caught. Needs `node`. Runs in the pre-push hook.
 
 ```bash
 python3 -m http.server 8123 &
@@ -89,35 +94,93 @@ for t in drivertest editortest; do
     "http://127.0.0.1:8123/tools/$t.html" & sleep 25; kill $!
 done
 grep -o '__result__?suite=[^ "]*' server.log
-# -> DONE 35/35   (read-only view)
-# -> DONE 78/78   (editor)
+# -> DONE 46/46   (read-only view)
+# -> DONE 102/102 (editor)
+
+python3 tools/crosscheck.py   # no server needed
 ```
+
+---
+
+## Two kinds of visitor
+
+Everyone who opens the site is a **guest**: they can read the tree, search it,
+switch between the two card styles, open the gallery, and share a link to any
+person. That is not a restriction the page imposes — it is everything the
+published data can do.
+
+An **archivist** can additionally change it. The way in is the key in the
+toolbar, and what unlocks it is a GitHub token, checked against GitHub itself.
+This matters more than it looks: the role decides what the page *draws*, and
+never what is *permitted*. Permission is GitHub refusing a push, and GitHub
+refusing to serve the private repository, to anyone whose token does not carry
+the access. A password in a public page would be decoration.
+
+The corollary is the thing to keep hold of: **the role does not hide published
+data from a guest, and nothing in a browser could.** `docs/data/tree.json` is a
+plain file on a public web server; anyone can open it directly. Which is why
+withholding happens before publication, not in the interface.
 
 ---
 
 ## Editing in the browser
 
-The published tree is editable in place. Open the site, press **Edit**, and you
-can rename people, correct dates, and add parents, partners, children and
-siblings — including new generations above the current top, which is the point.
-**Publish to GitHub** commits `docs/data/tree.json` straight back to this
-repository via the REST API and Pages redeploys within about a minute.
+Sign in with the key, press **Edit**, and you can rename people, correct dates,
+choose what is published about each of them, and add parents, partners, children
+and siblings — including new generations above the current top, which is the
+point. **Publish to GitHub** commits the redacted tree back to this repository
+via the REST API and Pages redeploys within about a minute.
 
-`docs/data/tree.json` is therefore now the **source of truth** for the published
-tree, not a build artifact. `build_site.py` refuses to overwrite a file that has
-been edited in the browser unless you pass `--force`.
+### Where the real record lives
 
-### The one rule the editor enforces
+Two repositories, and the split is the whole design:
 
-There is no private store, so a living person may hold a surname, a sex and
-their position in the tree, and nothing else — not even for you. Three
-independent mechanisms keep that true, because the one that matters is the one
-still working when the others are wrong:
+| | `family-archive` (public) | `family-archive-private` (private) |
+|---|---|---|
+| holds | `docs/data/tree.json` — the redacted build | `tree.full.json` — every field, every withheld person |
+| who can read it | anyone | only a token granted access |
+| written | on every publish | on every publish, **first** |
+
+The full record is written before the public one, deliberately. If the second
+write fails the archive has still kept everything and the site is merely stale;
+the other order risks publishing a redaction whose original was never saved
+anywhere, which is the one failure that loses data for good.
+
+Without the private repository the editor still works, but it says
+`public tree only` in the bar and withholding a detail **discards** it —
+there is nowhere else to put it. Create it as `family-archive-private`, private,
+and grant your token Contents: read and write on both.
+
+### Choosing what to publish
+
+Each person has a level, plus individual facts you can withhold:
+
+| Level | What a guest sees |
+|---|---|
+| **Published** | everything recorded about them |
+| **Name and dates only** | their name and years; no places, occupation, notes or photographs |
+| **Withheld entirely** | nothing — an unnamed connector card, so their relatives still join up |
+
+On top of the level, any of birth date, birth place, death date, death place,
+burial, occupation, notes, photographs or the Geni link can be withheld one at a
+time. The form shows a live preview of the result, and that preview is rendered
+by the same function that does the actual redacting, so it cannot drift from the
+truth.
+
+A withheld fact is shown to a guest as *withheld*, not as unknown. The tree does
+not pretend the record is empty.
+
+### The rules the editor enforces
+
+A living person may hold a surname, a sex and their position in the tree, and
+nothing else in the public repository — not even for you. A withheld person
+holds less than that. Three independent mechanisms keep both true, because the
+one that matters is the one still working when the others are wrong:
 
 | Where | What it does |
 |---|---|
-| the form | never renders given names, places, occupation or notes for a living person |
-| `scrub()` | strips those fields again on *every* write, so a stale value cannot survive a status change |
+| the form | never renders fields it may not record |
+| `docs/visibility.js` | re-derives the whole public tree from the working one on the way out |
 | `verify()` | re-reads the finished payload and refuses to publish on any hit |
 
 "Living" is derived from the record, never asserted. A dated death always counts.
@@ -127,16 +190,21 @@ don't know. It is **not** trusted for anyone born in the last 25 years, so
 ticking that box and then entering a recent birth year cannot publish a child.
 Entry order does not change the answer.
 
-The same rule lives in `tools/build_site.py` and `tools/verify_public.py`; if you
-change one, change all three.
+The same rules live in `docs/visibility.js`, `tools/build_site.py` and
+`tools/verify_public.py`. That triplication is deliberate — each is meant to
+catch the others being wrong — and `tools/crosscheck.py` is what stops them
+drifting apart silently, which is the failure mode that would publish somebody
+without raising an error anywhere.
 
 ### Signing in
 
-Publishing needs a **fine-grained** personal access token limited to this
-repository with **Contents: read and write**, and nothing else. The token stays
+Signing in needs a **fine-grained** personal access token with **Contents: read
+and write** on this repository, and on `family-archive-private` if you want to
+reach the withheld records. Nothing else. The token stays
 in your browser and is sent only to `api.github.com`; leave *Remember on this
-device* unticked and it is forgotten when the tab closes. Opening the editor
-without a token does nothing — GitHub is what decides whether you may write.
+device* unticked and it is forgotten when the tab closes. The token is checked
+against GitHub before the editing interface appears, and an expired one drops
+you back to a guest rather than showing an editor that cannot save.
 
 Unpublished changes are kept in a local draft and offered back after a reload,
 and **Download** exports the file if you would rather commit it yourself.

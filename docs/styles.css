@@ -15,6 +15,8 @@
   --unknown:      #7a7266;
   --living:       #8a8073;
   --card:         #fffdf8;
+  --withheld-card: #efe9dd;
+  --face-bg:       #efe8dc;
   --shadow:       0 1px 2px rgba(43, 38, 32, .08), 0 4px 14px rgba(43, 38, 32, .07);
   --focus:        #b8763a;
   --grid:         #e7ded0;
@@ -38,6 +40,8 @@
     --unknown:     #9a938a;
     --living:      #7d7a74;
     --card:        #22262c;
+    --withheld-card: #1e2126;
+    --face-bg:      #1c1f24;
     --shadow:      0 1px 2px rgba(0, 0, 0, .4), 0 4px 16px rgba(0, 0, 0, .3);
     --focus:       #e0ab74;
     --grid:        #23272d;
@@ -49,14 +53,16 @@
   --paper: #f6f2ea; --paper-2: #efe8dc; --ink: #2b2620; --ink-soft: #6b6154;
   --ink-faint: #9a8f7f; --rule: #ddd2be; --accent: #8c5a2b; --accent-soft: #f0e2cf;
   --male: #3d6b8e; --female: #96566d; --unknown: #7a7266; --living: #8a8073;
-  --card: #fffdf8; --shadow: 0 1px 2px rgba(43,38,32,.08), 0 4px 14px rgba(43,38,32,.07);
+  --card: #fffdf8; --withheld-card: #efe9dd; --face-bg: #efe8dc;
+  --shadow: 0 1px 2px rgba(43,38,32,.08), 0 4px 14px rgba(43,38,32,.07);
   --focus: #b8763a; --grid: #e7ded0;
 }
 :root[data-theme="dark"] {
   --paper: #16181c; --paper-2: #1c1f24; --ink: #e8e3da; --ink-soft: #a8a094;
   --ink-faint: #6f6a61; --rule: #32373e; --accent: #d9a066; --accent-soft: #33291d;
   --male: #7aa9cd; --female: #cf90a8; --unknown: #9a938a; --living: #7d7a74;
-  --card: #22262c; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  --card: #22262c; --withheld-card: #1e2126; --face-bg: #1c1f24;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
   --focus: #e0ab74; --grid: #23272d;
 }
 
@@ -283,6 +289,19 @@ body {
 .node.living .gv { font-style: italic; }
 .node.living .card { stroke-dasharray: 4 3; }
 
+/* Withheld: a card that is deliberately empty. Flatter and greyer than the
+   others, so it reads as a gap in the record rather than a person you have
+   simply not clicked yet. */
+.node.withheld .sexbar { fill: var(--rule); }
+.node.withheld .card {
+  fill: var(--withheld-card);
+  stroke-dasharray: 3 3;
+  filter: none;
+}
+.node.withheld .nm { fill: var(--ink-faint); font-weight: 600; }
+.node.withheld .gv,
+.node.withheld .dt { fill: var(--ink-faint); font-style: italic; }
+
 .node:hover .card { stroke: var(--accent); }
 .node.selected .card {
   stroke: var(--accent);
@@ -290,6 +309,24 @@ body {
 }
 .node.dimmed { opacity: .28; }
 .node .lock { fill: var(--ink-faint); font-size: 10.5px; }
+
+/* ── portrait cards ──────────────────────────────────────────────────────── */
+
+.node .face-ring {
+  fill: var(--face-bg);
+  stroke: var(--rule);
+  stroke-width: 1.2px;
+}
+.node.m .face-ring { stroke: var(--male); }
+.node.f .face-ring { stroke: var(--female); }
+.node.living .face-ring,
+.node.withheld .face-ring { stroke-dasharray: 3 3; }
+
+/* Not a placeholder for a missing photograph: for a living or withheld person
+   it is the only thing that can ever be drawn there. */
+.node .face-blank { fill: var(--ink-faint); opacity: .42; }
+.node .face { pointer-events: none; }
+.node:hover .face-ring { stroke: var(--accent); }
 
 /* ── detail panel ────────────────────────────────────────────────────────── */
 
@@ -396,6 +433,10 @@ body {
 .swatch-m { background: var(--male); }
 .swatch-f { background: var(--female); }
 .swatch-living { background: var(--living); }
+.swatch-withheld {
+  background: var(--withheld-card);
+  border: 1px dashed var(--ink-faint);
+}
 .legend .note { margin-left: auto; }
 .legend a { color: var(--accent); }
 
@@ -471,10 +512,37 @@ body {
 .pub-status { margin-left: 6px; color: var(--ink-soft); }
 .pub-status.good { color: #2f7a45; }
 .pub-status.bad { color: #a33; font-weight: 500; }
+.pub-status.warn { color: #8a5a1f; font-weight: 500; }
 @media (prefers-color-scheme: dark) {
   .pub-status.good { color: #7fc99a; }
   .pub-status.bad { color: #e08b8b; }
+  .pub-status.warn { color: #d9a066; }
 }
+
+/* Which record is being edited — the full one, or only what is already public.
+   It changes what withholding a detail means, so it is on screen permanently
+   rather than mentioned once. */
+.record-store {
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.record-store.ok { border-color: #2f7a45; color: #2f7a45; }
+.record-store.warn { border-color: #8a5a1f; color: #8a5a1f; }
+@media (prefers-color-scheme: dark) {
+  .record-store.ok { border-color: #7fc99a; color: #7fc99a; }
+  .record-store.warn { border-color: #d9a066; color: #d9a066; }
+}
+
+.unlock { min-width: 0; padding: 0 10px; opacity: .55; }
+.unlock:hover { opacity: 1; }
+[hidden] { display: none !important; }
+
+.auth-note { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
+.auth-note.bad { color: #a33; }
+@media (prefers-color-scheme: dark) { .auth-note.bad { color: #e08b8b; } }
 .pub-status a { color: var(--accent); }
 .linkish {
   padding: 0; font: inherit; color: var(--accent);
@@ -707,3 +775,79 @@ body.edit-mode .node { cursor: cell; }
 }
 .drop-photo:hover { color: #a33; border-color: #a33; }
 @media (prefers-color-scheme: dark) { .drop-photo:hover { color: #e08b8b; border-color: #7a4444; } }
+
+/* ── visibility controls ─────────────────────────────────────────────────── */
+
+.panel h4.sub {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.vis-levels { display: grid; gap: 6px; margin-bottom: 12px; }
+.vis-level {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 9px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.vis-level:hover { background: var(--accent-soft); }
+.vis-level.on { border-color: var(--accent); background: var(--accent-soft); }
+.vis-level input { grid-row: span 2; align-self: center; }
+.vis-name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.vis-level em {
+  grid-column: 2;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.vis-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 2px 12px;
+  margin: 8px 0 4px;
+}
+.vis-fields .check { margin: 4px 0; }
+/* Ticked by the level above rather than chosen here — shown, but not pretending
+   to be a control that does anything. */
+.vis-fields .check.locked { opacity: .55; cursor: default; }
+.vis-fields .check em { font-size: 11px; }
+
+/* The preview is generated by the same function that does the redacting, so it
+   is the answer rather than a description of it. */
+.vis-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.vis-preview h4 {
+  margin: 0 0 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+dl.preview {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) 1fr;
+  gap: 3px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+dl.preview dt { color: var(--ink-faint); }
+dl.preview dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+dl.preview .gone { color: var(--ink-faint); }
+
+.share-row { margin-top: 18px; }

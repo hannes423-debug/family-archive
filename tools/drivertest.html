@@ -215,6 +215,62 @@ function realClick(el, win) {
   }
   ok('every catalogued image is actually served', broken === 0, `${broken} missing`);
 
+  // ── what a guest can do ───────────────────────────────────────────────────
+
+  // The portrait view is a relayout, not a stylesheet swap: the cards change
+  // size, so everything must still be drawn and still be clickable.
+  const compactCards = doc.querySelectorAll('.node').length;
+  T.setViewMode('portrait');
+  await sleep(160);
+  ok('portrait view keeps every card',
+     doc.querySelectorAll('.node').length === compactCards);
+  ok('portrait view draws a face for everyone',
+     doc.querySelectorAll('.node .face-ring').length === compactCards);
+
+  // The one thing that must never happen: a living person's photograph.
+  const livingFaces = [...doc.querySelectorAll('.node.living')]
+    .filter((n) => n.querySelector('image.face')).length;
+  ok('no living person is given a portrait image', livingFaces === 0);
+
+  const anyPhoto = T.data.people.find((p) => !p.living && T.portraitFor(p));
+  if (anyPhoto) {
+    const node = [...doc.querySelectorAll('.node')]
+      .find((n) => n.dataset.id === anyPhoto.id);
+    ok('a deceased person with a portrait gets an image',
+       !!node && !!node.querySelector('image.face'));
+  } else {
+    ok('a deceased person with a portrait gets an image', true, 'none in this tree');
+  }
+
+  T.setViewMode('compact');
+  await sleep(160);
+  ok('switching back restores the compact cards',
+     doc.querySelectorAll('.node').length === compactCards
+     && !doc.querySelector('.node .face-ring'));
+
+  // Sharing: a link that names a person, and no more than that.
+  const someone = T.data.people.find((p) => !p.living);
+  T.select(someone.id);
+  await sleep(80);
+  const shareLink = T.shareUrl(someone.id);
+  ok('a share link names the person',
+     shareLink.includes(encodeURIComponent(someone.id)) || shareLink.includes(someone.id));
+  ok('a share link never carries the private build flag',
+     !/[?&]private=/.test(shareLink));
+  ok('the address bar follows the selection',
+     win.location.search.includes('person='));
+  ok('the panel offers a share button', !!doc.getElementById('share-person'));
+
+  T.setViewMode('portrait');
+  await sleep(120);
+  ok('a share link carries the card style', /[?&]view=portrait/.test(T.shareUrl(someone.id)));
+  T.setViewMode('compact');
+  await sleep(120);
+
+  T.clearSelection();
+  await sleep(60);
+  ok('clearing the selection clears the link', !win.location.search.includes('person='));
+
   report(results);
 })().catch((e) => {
   document.getElementById('log').textContent = 'THREW: ' + e.stack;

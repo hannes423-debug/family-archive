@@ -1,30 +1,39 @@
 /* Family Archive — the browser editor.
  *
- * Edits the published tree in place and commits it straight back to GitHub via
- * the REST API. There is no server anywhere in this: the page holds a token you
- * paste, and GitHub itself is the only thing that decides whether you may write.
+ * Edits the tree in place and commits it straight back to GitHub via the REST
+ * API. There is no server anywhere in this: the page holds a token you paste,
+ * and GitHub itself is the only thing that decides whether you may write.
  *
  * THE RULE THIS FILE EXISTS TO ENFORCE
  * ------------------------------------
- * This repository is public and there is no private store. So a living person
- * may carry a surname, a sex, and their position in the tree — nothing else,
- * ever, not even for the archivist. Every editing path here is built so that
- * recording a living person's given name or date is not a thing you can do:
+ * `docs/data/tree.json` sits on a public web server, so whatever reaches it is
+ * published whether or not the interface draws it. A living person may carry a
+ * surname, a sex, and their position in the tree — nothing else, ever. Someone
+ * the archivist has withheld carries less than that. Both are enforced the same
+ * way, three times over and deliberately independently:
  *
- *   - the form does not render those fields for a living person
- *   - `scrub()` strips them again on every write, so a stale value cannot survive
+ *   - the form does not render the fields it may not record
+ *   - `redactForPublication()` re-derives the public tree from the working one
  *   - `verify()` re-reads the finished payload and refuses to publish on any hit
  *
- * "Living" is derived, never free-form: someone born within the last 100 years
- * with no death date IS living, and you cannot tick a box to say otherwise. To
- * record detail for such a person you must record their death — which is the
- * honest thing the data is actually claiming.
+ * The rules themselves live in `visibility.js`, shared with the viewer and the
+ * test suites, and mirrored in `tools/verify_public.py`. They are not restated
+ * here — one definition, checked from several directions.
+ *
+ * WORKING COPY vs PUBLISHED COPY
+ * ------------------------------
+ * With a private companion repository wired up, the working copy is the *full*
+ * record — hidden people included — and redaction happens only on the way out.
+ * Without one there is nowhere safe to keep withheld detail, so the working
+ * copy is scrubbed on every write exactly as it always was, and withholding
+ * something discards it. `fullRecord` is which of those two we are in.
  */
 'use strict';
 
 (function () {
 
 const T = window.Tree;
+const V = window.Visibility;
 const el = (id) => document.getElementById(id);
 
 const REPO_OWNER = 'hannes423-debug';
@@ -32,7 +41,11 @@ const REPO_NAME = 'family-archive';
 const FILE_PATH = 'docs/data/tree.json';
 const BRANCH = 'main';
 
-const PRESUMED_DEAD_AFTER_YEARS = 100;   // matches tools/build_site.py
+// The private companion. Holds the full record — every field, every withheld
+// person — and GitHub, not this page, is what keeps a guest out of it.
+const PRIVATE_REPO = 'family-archive-private';
+const PRIVATE_FILE = 'tree.full.json';
+
 const DRAFT_KEY = 'familyArchive.draft.v1';
 const TOKEN_KEY = 'familyArchive.token.v1';
 
@@ -45,6 +58,11 @@ let dirty = 0;
 let baseSha = null;        // sha of the tree.json we loaded, for conflict detection
 let headSha = null;        // branch head when we loaded, for conflict detection
 const undoStack = [];
+
+// True once the private companion repository has answered for itself. Until
+// then the working copy is the public one and is scrubbed on every write.
+let fullRecord = false;
+let privateSha = null;     // blob sha of tree.full.json, for conflict detection
 
 // Photographs chosen but not yet committed. Held as bytes plus a local blob URL
 // so they render immediately; uploaded as blobs when you publish.
@@ -69,6 +87,48 @@ function setToken(value, remember) {
   localStorage.removeItem(TOKEN_KEY);
   if (!value) return;
   (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, value);
+}
+
+// ── who is using this page ──────────────────────────────────────────────────
+
+/**
+ * Two roles: guest and archivist.
+ *
+ * A guest reads the tree, searches it and shares links to it. That is not a
+ * restriction imposed by this page — it is everything the published data can
+ * do. An archivist additionally writes, and what makes that a real boundary
+ * rather than a pretend one is that it is not enforced here at all: GitHub
+ * decides, by refusing a push and by refusing to serve the private repository,
+ * to anyone whose token does not carry the access.
+ *
+ * So be clear about what the role does and does not do. It gates WRITING, and
+ * it gates the PRIVATE record. It does not hide published data from a guest,
+ * and nothing in a browser could — `docs/data/tree.json` is a plain file on a
+ * public web server. That is why withholding happens before publication, not
+ * in the interface.
+ */
+let role = 'guest';
+let account = null;      // the GitHub login behind the token, once verified
+
+const isAdmin = () => role === 'admin';
+
+/**
+ * Ask GitHub whether this token may write here. The answer is advisory — the
+ * authority is the push itself, which will fail regardless of what this said —
+ * but it lets the page refuse to show an editing interface that could not work.
+ */
+async function checkToken(token) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`, {
+      headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    if (!body.permissions || !body.permissions.push) return null;
+    return body;
+  } catch (_) {
+    return null;   // offline, or GitHub is having a day
+  }
 }
 
 // ── dates ───────────────────────────────────────────────────────────────────
@@ -98,142 +158,51 @@ function parseDate(raw) {
 }
 
 const thisYear = new Date().getFullYear();
+const ASSERTION_FLOOR_YEARS = V.ASSERTION_FLOOR_YEARS;
 
-// Below this age, "deceased" needs an actual death date rather than a bare
-// assertion. Claiming a small child has died is not something anyone should be
-// able to do by mis-clicking a checkbox, and that is the case where getting it
-// wrong publishes a minor's details.
-const ASSERTION_FLOOR_YEARS = 25;
+// The rules themselves live in visibility.js. These are the names this file
+// already used, kept as aliases so there is exactly one definition to audit.
+const deriveLiving = V.deriveLiving;
+const verify = V.problems;
 
-/**
- * Living is derived from the record, never asserted by the user.
- * A death or burial proves death; otherwise a birth long enough ago presumes
- * it; everyone else — including anyone with no dates at all — is living.
- *
- * The one lever the archivist has is asserting a death with no date — GEDCOM's
- * own bare DEAT tag valued Y, meaning it happened and nothing further is
- * recorded. That is what makes it possible to name an ancestor whose dates are
- * unknown, which is most of them.
- */
-function deriveLiving(p) {
-  const year = p.birth && p.birth.date && p.birth.date.year;
-  const bornRecently = year && (thisYear - year) < ASSERTION_FLOOR_YEARS;
-
-  // A death with an actual date is a specific factual claim and always counts.
-  const datedDeath = (p.death && p.death.date) || (p.burial && p.burial.date);
-  if (datedDeath) return false;
-
-  // A bare "deceased, date unknown" is trusted for an ancestor, but it must not
-  // outrank a recent birth date — otherwise ticking a box and then typing a
-  // birth year would publish a child. Order of entry must not change the answer.
-  if ((p.death || p.burial) && !bornRecently) return false;
-
-  return !(year && thisYear - year >= PRESUMED_DEAD_AFTER_YEARS);
+/** The public tree, derived from whatever the working copy currently is. */
+function redactForPublication() {
+  return V.publicTree({ people: T.data.people, families: T.data.families });
 }
 
 // ── the invariant ───────────────────────────────────────────────────────────
 
-const LIVING_KEEPS = ['id', 'surname', 'sex', 'living', 'generation',
-                      'parentFamily', 'spouseFamilies'];
-
 /**
- * Force a person into a shape the public repo may hold. Applied on EVERY write,
- * not just when toggling status, so a value entered before someone was known to
- * be living cannot linger.
+ * Bring the working copy back into step after a write.
+ *
+ * Without a private companion repository there is nowhere for a living person's
+ * details to live, so they are stripped here and now — a value entered before
+ * someone was known to be living cannot be allowed to linger in a copy that is
+ * one Publish away from the open web.
+ *
+ * With one, the working copy is allowed to be the full record and only the
+ * derived fields are refreshed; `redactForPublication()` is then the thing that
+ * decides what leaves. Note what this means in practice: in that mode the
+ * localStorage draft on the archivist's own machine does hold living people's
+ * details. That is the point of having somewhere private to put them.
  */
 function scrub(p) {
   p.living = deriveLiving(p);
-  if (!p.living) {
-    p.name = [p.given, p.surname].filter(Boolean).join(' ') || 'Unknown';
-    return p;
-  }
+  p.name = p.living
+    ? ('Living ' + (p.surname || '')).trim()
+    : ([p.given, p.surname].filter(Boolean).join(' ') || 'Unknown');
+  if (!p.living || fullRecord) return p;
+
   const kept = {};
-  for (const k of LIVING_KEEPS) kept[k] = p[k];
+  for (const k of V.LIVING_KEEPS) kept[k] = p[k];
   Object.assign(p, kept, {
     name: ('Living ' + (p.surname || '')).trim(),
     given: '', married: '', nick: '', aka: [],
     birth: null, death: null, burial: null,
     occupation: null, notes: [], geniId: null,
-    media: [],   // a living person may not be pictured either
+    media: [], photo: null,   // a living person may not be pictured either
   });
   return p;
-}
-
-/** Independent re-check of the finished payload. The last gate before a push. */
-function verify(data, media) {
-  const problems = [];
-  const byId = new Map(data.people.map((p) => [p.id, p]));
-
-  for (const p of data.people) {
-    if (!p.living) continue;
-    for (const f of ['given', 'married', 'nick', 'occupation', 'geniId']) {
-      if (p[f]) problems.push(`${p.name || p.id}: still carries ${f}`);
-    }
-    for (const f of ['birth', 'death', 'burial']) {
-      if (p[f]) problems.push(`${p.name || p.id}: still carries a ${f} record`);
-    }
-    if ((p.aka || []).length || (p.notes || []).length) {
-      problems.push(`${p.name || p.id}: still carries aka/notes`);
-    }
-    if ((p.media || []).length) {
-      problems.push(`${p.name || p.id}: still has a photograph attached`);
-    }
-    if (!/^Living\b/.test(p.name || '')) {
-      problems.push(`${p.id}: name is not masked (${p.name})`);
-    }
-    if (deriveLiving(p) !== true) {
-      problems.push(`${p.id}: flagged living but the record says otherwise`);
-    }
-  }
-  for (const p of data.people) {
-    if (!p.living && deriveLiving(p)) {
-      problems.push(`${p.name || p.id}: marked deceased but the record says living`);
-    }
-  }
-  // A marriage date identifies a living spouse as surely as a birth date.
-  for (const f of data.families) {
-    const spouses = [f.husband, f.wife].filter(Boolean);
-    if (!spouses.some((s) => byId.get(s) && byId.get(s).living)) continue;
-    if (f.event && (f.event.date || f.event.place)) {
-      problems.push(`a family event exposes a date or place for a living couple`);
-    }
-  }
-  // Structural integrity, so a bad edit cannot publish a broken tree.
-  for (const p of data.people) {
-    if (p.parentFamily && !data.families.some((f) => f.id === p.parentFamily)) {
-      problems.push(`${p.name}: parent family does not exist`);
-    }
-    for (const fid of p.spouseFamilies) {
-      if (!data.families.some((f) => f.id === fid)) {
-        problems.push(`${p.name}: spouse family does not exist`);
-      }
-    }
-  }
-  for (const f of data.families) {
-    for (const c of f.children) {
-      if (!byId.has(c)) problems.push(`a family lists a child who does not exist`);
-    }
-  }
-
-  if (media) {
-    const known = new Set((media.items || []).map((m) => m.file));
-    for (const m of media.items || []) {
-      // Generated names only: an uploaded filename could be anything, and a
-      // path publishes as surely as a file.
-      if (!/^[a-z0-9.\-]+$/.test(m.file)) {
-        problems.push(`photograph filename is not URL-safe: ${m.file}`);
-      }
-      if (!m.caption) problems.push(`a photograph has no caption`);
-    }
-    for (const p of data.people) {
-      for (const ref of p.media || []) {
-        if (!known.has(ref)) {
-          problems.push(`${p.name}: references a photograph that is not in the catalogue`);
-        }
-      }
-    }
-  }
-  return problems;
 }
 
 // ── mutation helpers ────────────────────────────────────────────────────────
@@ -274,10 +243,11 @@ const newId = (kind) => `@${kind}W${(nextIdCounter++).toString(36).toUpperCase()
 function addPerson(fields = {}) {
   const p = Object.assign({
     id: newId('I'), given: '', surname: '', married: '', nick: '',
-    name: '', aka: [], sex: 'U', media: [],
+    name: '', aka: [], sex: 'U', media: [], photo: null,
     birth: null, death: null, burial: null,
     occupation: null, notes: [], geniId: null,
     generation: 0, parentFamily: null, spouseFamilies: [],
+    visibility: 'public', hideFields: [],
   }, fields);
   scrub(p);
   T.data.people.push(p);
@@ -427,6 +397,75 @@ function field(label, name, value, opts = {}) {
     opts.hint ? `<em class="hint-txt">${T.esc(opts.hint)}</em>` : ''}</label>`;
 }
 
+/**
+ * What the archivist chooses to publish about this person.
+ *
+ * The preview underneath is not decoration. The whole feature turns on knowing
+ * what a stranger will see, and the only trustworthy answer is the one produced
+ * by the same function that will actually do the redacting — so it renders
+ * `V.publicPerson(p)` rather than describing what it is expected to contain.
+ */
+function visibilitySection(p) {
+  const lvl = V.level(p);
+  const hide = V.effectiveHides(p);
+  const preset = new Set(lvl === 'limited' ? V.LIMITED_HIDES : []);
+  const out = ['<section class="vis"><h3>What to publish</h3>'];
+
+  out.push('<div class="vis-levels">' + V.LEVELS.map((l) => `
+    <label class="vis-level${lvl === l.key ? ' on' : ''}">
+      <input type="radio" name="vis-level" value="${l.key}"${lvl === l.key ? ' checked' : ''}>
+      <span class="vis-name">${T.esc(l.label)}</span>
+      <em>${T.esc(l.hint)}</em>
+    </label>`).join('') + '</div>');
+
+  if (lvl !== 'hidden') {
+    out.push('<p class="hint-txt">Withhold individual facts. A withheld fact is '
+      + 'shown as withheld rather than as unknown — the tree does not pretend '
+      + 'the record is empty.</p>');
+    out.push('<div class="vis-fields">' + V.FIELDS.map((f) => {
+      const locked = preset.has(f.key);   // implied by the level, not separately chosen
+      return `<label class="check${locked ? ' locked' : ''}">
+        <input type="checkbox" data-hide="${f.key}"${hide.has(f.key) ? ' checked' : ''}
+               ${locked ? 'disabled' : ''}>
+        ${T.esc(f.label)}${f.hint ? ` <em class="hint-txt">${T.esc(f.hint)}</em>` : ''}</label>`;
+    }).join('') + '</div>');
+  }
+
+  if (p.living) {
+    out.push('<p class="hint-txt">This person is living, so everything is '
+      + 'withheld already, whatever is ticked above.</p>');
+  }
+  if (!fullRecord && (lvl !== 'public' || hide.size)) {
+    out.push('<p class="redacted"><strong>Nowhere to keep it.</strong> Without '
+      + 'the private repository, whatever you withhold here is dropped on the '
+      + 'next publish rather than stored — the public tree is the only copy.</p>');
+  }
+
+  out.push(`<div class="vis-preview"><h4>What a visitor sees</h4>${
+    previewOf(p)}</div>`);
+  return out.join('') + '</section>';
+}
+
+/** Render the actual redacted record, not a description of it. */
+function previewOf(p) {
+  const shown = V.publicPerson(p);
+  const rows = [];
+  const line = (k, v) => rows.push(
+    `<dt>${T.esc(k)}</dt><dd>${v ? T.esc(v) : '<span class="gone">—</span>'}</dd>`);
+
+  line('Name', shown.hidden ? 'Withheld' : shown.name);
+  line('Years', T.lifeYears(shown) || (shown.death && shown.death.asserted
+    ? 'died, date unknown' : ''));
+  line('Born', T.eventLine(shown.birth));
+  line('Died', T.eventLine(shown.death));
+  line('Occupation', shown.occupation);
+  line('Notes', (shown.notes || []).length
+    ? `${shown.notes.length} note(s)` : '');
+  line('Photographs', (shown.media || []).length
+    ? `${shown.media.length} attached` : '');
+  return `<dl class="preview">${rows.join('')}</dl>`;
+}
+
 function renderEditor(p, panel, body) {
   const out = [];
   const living = p.living;
@@ -510,9 +549,28 @@ function renderEditor(p, panel, body) {
              <span>${T.esc(m.caption)}${m.pending ? ' · queued' : ''}</span></label>
              <button type="button" class="drop-photo" data-drop-media="${T.esc(m.file)}"
                      title="Remove from the archive">\u00d7</button></div>`).join('')
-        + '</div></section>');
+        + '</div>');
+
+      // Which of them is the face on the tree. Only a picture actually attached
+      // to this person can be it.
+      const attached = cat.filter((m) => mine.has(m.file));
+      if (attached.length) {
+        out.push('<h4 class="sub">Portrait on the tree</h4><div class="pick-list">'
+          + `<label class="pick"><input type="radio" name="portrait"
+               data-portrait=""${p.photo ? '' : ' checked'}>
+             <span>None \u2014 show a silhouette</span></label>`
+          + attached.map((m) => `<label class="pick">
+               <input type="radio" name="portrait" data-portrait="${T.esc(m.file)}"
+                      ${p.photo === m.file ? 'checked' : ''}>
+               <img src="${T.esc(T.mediaSrc(m))}" alt="" loading="lazy">
+               <span>${T.esc(m.caption)}</span></label>`).join('')
+          + '</div>');
+      }
+      out.push('</section>');
     }
   }
+
+  out.push(visibilitySection(p));
 
   out.push(`<section><h3>Add a relative</h3><div class="btn-row">
       <button type="button" class="mini" data-add="father">+ Father</button>
@@ -535,8 +593,10 @@ function renderEditor(p, panel, body) {
   panel.removeAttribute('hidden');
   panel.classList.add('editing');
 
-  // Live-apply on every change, so there is no save button to forget.
-  body.querySelectorAll('input, textarea, select').forEach((input) => {
+  // Live-apply on every change, so there is no save button to forget. Scoped to
+  // the `f-` fields specifically: the visibility, portrait and photograph
+  // controls are inputs too, and they own their own commits.
+  body.querySelectorAll('[id^="f-"]').forEach((input) => {
     input.addEventListener('change', () => applyForm(p.id, body));
   });
   body.querySelectorAll('[data-media]').forEach((box) => {
@@ -546,7 +606,43 @@ function renderEditor(p, panel, body) {
         const set = new Set(person.media || []);
         if (box.checked) set.add(box.dataset.media); else set.delete(box.dataset.media);
         person.media = [...set];
+        // Detaching the picture that was the portrait must not leave the card
+        // pointing at something this person no longer has.
+        if (person.photo && !set.has(person.photo)) person.photo = null;
       }, { repaintPanel: false });
+    });
+  });
+  body.querySelectorAll('[data-portrait]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      commitChange(() => {
+        const person = T.data.people.find((x) => x.id === p.id);
+        person.photo = radio.dataset.portrait || null;
+      }, { repaintPanel: false });
+    });
+  });
+  body.querySelectorAll('[name="vis-level"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      commitChange(() => {
+        const person = T.data.people.find((x) => x.id === p.id);
+        // Only the level changes. `hideFields` holds the individually chosen
+        // withholdings and nothing else — the ones a level implies live in
+        // `effectiveHides` and are never written here — so clearing any of it
+        // on a level change would silently republish a fact the archivist
+        // withheld on purpose.
+        person.visibility = radio.value;
+      });
+      T.select(p.id, { centre: false });
+    });
+  });
+  body.querySelectorAll('[data-hide]').forEach((box) => {
+    box.addEventListener('change', () => {
+      commitChange(() => {
+        const person = T.data.people.find((x) => x.id === p.id);
+        const set = new Set(person.hideFields || []);
+        if (box.checked) set.add(box.dataset.hide); else set.delete(box.dataset.hide);
+        person.hideFields = [...set];
+      });
+      T.select(p.id, { centre: false });
     });
   });
   body.querySelectorAll('[data-drop-media]').forEach((btn) => {
@@ -761,8 +857,16 @@ function toBase64(text) {
   return btoa(binary);
 }
 
+/** Fields the viewer hangs off a person at load time, not part of the record. */
+function stripDerived(p) {
+  const c = { ...p };
+  delete c._parents; delete c._children; delete c._siblings; delete c._spouses;
+  return c;
+}
+
+/** What goes to the PUBLIC repository. Redacted, always, without exception. */
 function buildPayload() {
-  const people = T.data.people.map(scrub);
+  const { people, families } = redactForPublication();
   return {
     generated: new Date().toISOString().replace(/\.\d+Z$/, '+00:00'),
     source: T.data.source || 'edited in browser',
@@ -770,21 +874,96 @@ function buildPayload() {
     editedInBrowser: true,
     stats: {
       people: people.length,
-      families: T.data.families.length,
+      families: families.length,
       living: people.filter((p) => p.living).length,
-      redacted: people.filter((p) => p.living).length,
+      withheld: people.filter((p) => p.hidden).length,
+      redacted: people.filter((p) => p.living || p.hidden).length,
       generations: people.length ? Math.max(...people.map((p) => p.generation)) + 1 : 0,
     },
-    people: people
-      .map((p) => {
-        const c = { ...p };
-        // Derived at load time; not part of the stored record.
-        delete c._parents; delete c._children; delete c._siblings; delete c._spouses;
-        return c;
-      })
+    people: people.map(stripDerived)
       .sort((a, b) => a.generation - b.generation || a.name.localeCompare(b.name)),
+    families: families.sort((a, b) => a.id.localeCompare(b.id)),
+  };
+}
+
+/**
+ * What goes to the PRIVATE repository: the working copy exactly as it stands,
+ * unredacted. This is the archive's real record, and the only reason it is safe
+ * to write is that GitHub will not serve that repository to anyone without a
+ * token that has been granted access to it.
+ */
+function buildPrivatePayload() {
+  return {
+    generated: new Date().toISOString().replace(/\.\d+Z$/, '+00:00'),
+    source: T.data.source || 'edited in browser',
+    redacted: false,
+    note: 'The full record. Never copy this into the public repository.',
+    stats: {
+      people: T.data.people.length,
+      families: T.data.families.length,
+      withheld: T.data.people.filter((p) => V.level(p) === 'hidden').length,
+    },
+    people: T.data.people.map(stripDerived)
+      .sort((a, b) => a.generation - b.generation
+        || String(a.name).localeCompare(String(b.name))),
     families: [...T.data.families].sort((a, b) => a.id.localeCompare(b.id)),
   };
+}
+
+// ── the private companion ───────────────────────────────────────────────────
+
+/**
+ * Try to open the private record.
+ *
+ * Three outcomes, and the difference matters because it decides whether the
+ * working copy is allowed to hold anything the public one may not:
+ *
+ *   loaded  — the repository and the file are both there. The working copy
+ *             becomes the full record; redaction happens on the way out.
+ *   empty   — the repository is there but has no file yet. Same mode; the
+ *             first publish seeds it from what is on screen.
+ *   missing — no repository. Stay on the public record and scrub every write,
+ *             because there is nowhere safe to put anything else.
+ */
+async function openPrivateRecord() {
+  const path = `/repos/${REPO_OWNER}/${PRIVATE_REPO}/contents/${PRIVATE_FILE}`;
+  try {
+    const file = await api(path);
+    privateSha = file.sha;
+    fullRecord = true;
+    const text = new TextDecoder().decode(
+      Uint8Array.from(atob(file.content.replace(/\n/g, '')), (c) => c.charCodeAt(0)));
+    return { state: 'loaded', data: JSON.parse(text) };
+  } catch (err) {
+    if (err.status !== 404) return { state: 'missing', error: err };
+    // A 404 is ambiguous — no file, or no repository, or no access to it.
+    try {
+      await api(`/repos/${REPO_OWNER}/${PRIVATE_REPO}`);
+      privateSha = null;
+      fullRecord = true;
+      return { state: 'empty' };
+    } catch (_) {
+      privateSha = null;
+      fullRecord = false;
+      return { state: 'missing' };
+    }
+  }
+}
+
+/** Write the full record. Always before the public one — see `publish`. */
+async function pushPrivateRecord(message) {
+  const payload = buildPrivatePayload();
+  const body = {
+    message,
+    content: toBase64(JSON.stringify(payload, null, 1) + '\n'),
+    branch: BRANCH,
+  };
+  if (privateSha) body.sha = privateSha;
+  const res = await api(
+    `/repos/${REPO_OWNER}/${PRIVATE_REPO}/contents/${PRIVATE_FILE}`,
+    { method: 'PUT', body: JSON.stringify(body) });
+  privateSha = res.content.sha;
+  return res;
 }
 
 async function api(path, options = {}) {
@@ -850,6 +1029,15 @@ async function publish() {
 
   const repo = `/repos/${REPO_OWNER}/${REPO_NAME}`;
   try {
+    // The full record goes first, deliberately. If the second write fails the
+    // archive has still kept everything and the public site is merely stale;
+    // the other order risks publishing a redaction whose original was never
+    // saved anywhere, which is the one failure that loses data for good.
+    if (fullRecord) {
+      status.textContent = 'Saving the full record…';
+      await pushPrivateRecord(`Update the full record (${dirty} edit${dirty === 1 ? '' : 's'})`);
+    }
+
     const ref = await api(`${repo}/git/ref/heads/${BRANCH}`);
     const parent = ref.object.sha;
     if (headSha && parent !== headSha) {
@@ -959,6 +1147,8 @@ function downloadJson() {
 function openAuth() {
   const dlg = el('auth');
   el('auth-token').value = '';
+  el('auth-note').textContent = '';
+  el('auth-note').className = 'auth-note';
   dlg.removeAttribute('hidden');
   el('auth-token').focus();
 }
@@ -1048,19 +1238,96 @@ function openUpload() { el('upload').removeAttribute('hidden'); }
 
 function wireAuth() {
   el('auth-cancel').addEventListener('click', () => el('auth').setAttribute('hidden', ''));
-  el('auth-save').addEventListener('click', () => {
+  el('auth-save').addEventListener('click', async () => {
     const value = el('auth-token').value.trim();
     if (!value) return;
+    const note = el('auth-note');
+    const btn = el('auth-save');
+    btn.disabled = true;
+    note.textContent = 'Asking GitHub…';
+    note.className = 'auth-note';
+
+    const repo = await checkToken(value);
+    btn.disabled = false;
+    if (!repo) {
+      note.className = 'auth-note bad';
+      note.textContent = 'GitHub would not accept that token for this repository. '
+        + 'It needs Contents: read and write on '
+        + `${REPO_OWNER}/${REPO_NAME}, and it must not have expired.`;
+      return;
+    }
+
     setToken(value, el('auth-remember').checked);
+    account = repo.owner && repo.owner.login;
     el('auth').setAttribute('hidden', '');
-    paintBar();
-    publish();
+    note.textContent = '';
+    await becomeAdmin();
   });
   el('auth-forget').addEventListener('click', () => {
     setToken('', false);
     el('auth').setAttribute('hidden', '');
-    paintBar();
+    signOut();
   });
+}
+
+// ── switching roles ─────────────────────────────────────────────────────────
+
+/**
+ * Take the archivist's seat: reveal the editing chrome, then try to open the
+ * private record. Editing still works if that fails — it just falls back to the
+ * old behaviour where the working copy is the public one, and says so.
+ */
+async function becomeAdmin() {
+  role = 'admin';
+  document.body.classList.add('is-admin');
+  paintBar();
+
+  const status = el('pub-status');
+  status.className = 'pub-status';
+  status.textContent = 'Opening the private record…';
+
+  const result = await openPrivateRecord();
+
+  if (result.state === 'loaded') {
+    // Only adopt it if nothing has been typed yet — otherwise the archivist
+    // watches their own work vanish, which is a worse outcome than a stale base.
+    if (dirty === 0) {
+      T.data.people = T.normalise(result.data).people;
+      T.data.families = result.data.families;
+      T.rebuild({ keepView: false });
+    }
+    status.className = 'pub-status good';
+    status.textContent = `Editing the full record from ${PRIVATE_REPO}.`;
+  } else if (result.state === 'empty') {
+    status.className = 'pub-status good';
+    status.textContent = `${PRIVATE_REPO} is ready but empty — publishing will `
+      + 'seed it with the full record.';
+  } else {
+    status.className = 'pub-status warn';
+    status.innerHTML = '<strong>No private record.</strong> Editing the public '
+      + 'tree directly, so withholding a detail discards it. '
+      + `<a href="https://github.com/new?name=${PRIVATE_REPO}&visibility=private" `
+      + 'target="_blank" rel="noopener">Create the private repository →</a>';
+  }
+  paintBar();
+  if (T.selectedId) T.select(T.selectedId, { centre: false });
+}
+
+function signOut() {
+  if (dirty > 0 && !confirm(
+      'There are unpublished changes. Leaving the archivist seat discards them. Continue?')) {
+    return;
+  }
+  role = 'guest';
+  account = null;
+  fullRecord = false;
+  privateSha = null;
+  document.body.classList.remove('is-admin');
+  setEditing(false);
+  clearDraft();
+  paintBar();
+  // The working copy may be the full record; it must not outlive the session.
+  location.reload();
 }
 
 // ── the edit bar ────────────────────────────────────────────────────────────
@@ -1068,20 +1335,36 @@ function wireAuth() {
 function paintBar() {
   const bar = el('editbar');
   if (!bar) return;
-  bar.hidden = !editing;
+  const admin = isAdmin();
+
+  // A guest is shown no editing affordances at all — not disabled ones. An
+  // interface full of greyed-out buttons invites people to go looking for the
+  // way round them.
+  el('unlock').hidden = admin;
+  el('edit-toggle').hidden = !admin;
+  bar.hidden = !(admin && editing);
+  if (!admin) return;
+
   el('edit-toggle').textContent = editing ? 'Done' : 'Edit';
   el('edit-toggle').classList.toggle('active', editing);
   el('pub-count').textContent = dirty
     ? `${dirty} unpublished change${dirty === 1 ? '' : 's'}` : 'No changes yet';
   el('btn-publish').disabled = dirty === 0;
   el('btn-undo').disabled = undoStack.length === 0;
-  el('btn-token').textContent = getToken() ? 'Change token' : 'Add token';
+  el('btn-signout').textContent = account ? `Sign out (${account})` : 'Sign out';
+
+  const store = el('record-store');
+  store.textContent = fullRecord ? 'full record' : 'public tree only';
+  store.className = 'record-store ' + (fullRecord ? 'ok' : 'warn');
+  store.title = fullRecord
+    ? `Editing ${PRIVATE_REPO}/${PRIVATE_FILE}. Withheld detail is kept there.`
+    : 'No private repository, so anything you withhold is discarded on publish.';
 }
 
 function setEditing(on) {
-  editing = on;
-  document.body.classList.toggle('edit-mode', on);
-  T.onPanel = on ? renderEditor : null;
+  editing = isAdmin() && on;
+  document.body.classList.toggle('edit-mode', editing);
+  T.onPanel = editing ? renderEditor : null;
   paintBar();
   if (T.selectedId) T.select(T.selectedId, { centre: false });
 }
@@ -1093,10 +1376,11 @@ async function init() {
   wireAuth();
   wireUpload();
 
+  el('unlock').addEventListener('click', openAuth);
   el('edit-toggle').addEventListener('click', () => setEditing(!editing));
   el('btn-publish').addEventListener('click', publish);
   el('btn-undo').addEventListener('click', undo);
-  el('btn-token').addEventListener('click', openAuth);
+  el('btn-signout').addEventListener('click', signOut);
   el('btn-upload').addEventListener('click', openUpload);
   el('btn-download').addEventListener('click', downloadJson);
   el('btn-discard').addEventListener('click', () => {
@@ -1119,17 +1403,38 @@ async function init() {
     baseSha = headSha;
   } catch (_) { headSha = null; }
 
+  // A token that was remembered on this device signs back in on its own, but
+  // only after GitHub has agreed it is still good — an expired one must drop
+  // the page back to a guest rather than show an editor that cannot save.
+  paintBar();
+  const remembered = getToken();
+  if (remembered) {
+    const repo = await checkToken(remembered);
+    if (repo) {
+      account = repo.owner && repo.owner.login;
+      await becomeAdmin();
+    } else {
+      setToken('', false);
+    }
+  }
+
+  // A draft is the archivist's unpublished work and can hold the full record,
+  // so it is only ever offered to someone who has signed back in.
   const draft = loadDraft();
   if (draft && draft.people) {
-    const when = new Date(draft.saved).toLocaleString();
-    if (confirm(`You have unpublished changes from ${when}. Restore them?`)) {
-      T.data.people = draft.people;
-      T.data.families = draft.families;
-      T.rebuild({ keepView: false });
-      dirty = 1;
-      setEditing(true);
-    } else {
+    if (!isAdmin()) {
       clearDraft();
+    } else {
+      const when = new Date(draft.saved).toLocaleString();
+      if (confirm(`You have unpublished changes from ${when}. Restore them?`)) {
+        T.data.people = T.normalise(draft).people;
+        T.data.families = draft.families;
+        T.rebuild({ keepView: false });
+        dirty = 1;
+        setEditing(true);
+      } else {
+        clearDraft();
+      }
     }
   }
   paintBar();
@@ -1137,11 +1442,24 @@ async function init() {
 
 function buildChrome() {
   const controls = document.querySelector('.controls');
+
+  // The only way in. Deliberately quiet — it is not a feature to be discovered
+  // by a visitor, and pressing it achieves nothing without a token GitHub likes.
+  const unlock = document.createElement('button');
+  unlock.type = 'button';
+  unlock.id = 'unlock';
+  unlock.className = 'edit-toggle unlock';
+  unlock.title = 'Archivist sign-in';
+  unlock.setAttribute('aria-label', 'Archivist sign-in');
+  unlock.textContent = '\u{1F511}';
+  controls.appendChild(unlock);
+
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.id = 'edit-toggle';
   toggle.className = 'edit-toggle';
   toggle.textContent = 'Edit';
+  toggle.hidden = true;
   controls.appendChild(toggle);
 
   const bar = document.createElement('div');
@@ -1150,11 +1468,12 @@ function buildChrome() {
   bar.hidden = true;
   bar.innerHTML = `
     <span id="pub-count" class="pub-count">No changes yet</span>
+    <span id="record-store" class="record-store"></span>
     <button type="button" class="mini" id="btn-undo">Undo</button>
     <button type="button" class="mini" id="btn-upload">Add photograph</button>
     <button type="button" class="mini" id="btn-download">Download</button>
-    <button type="button" class="mini" id="btn-token">Add token</button>
     <button type="button" class="mini" id="btn-discard">Discard</button>
+    <button type="button" class="mini" id="btn-signout">Sign out</button>
     <button type="button" class="mini primary" id="btn-publish">Publish to GitHub</button>
     <span id="pub-status" class="pub-status"></span>`;
   document.querySelector('.topbar').insertAdjacentElement('afterend', bar);
@@ -1203,10 +1522,13 @@ function buildChrome() {
   dlg.hidden = true;
   dlg.innerHTML = `
     <div class="auth-card">
-      <h2>Publishing needs a GitHub token</h2>
-      <p>Create a <strong>fine-grained</strong> personal access token limited to
-         <code>${REPO_OWNER}/${REPO_NAME}</code> with <strong>Contents: read and
-         write</strong>. Nothing else. Give it a short expiry.</p>
+      <h2>Archivist sign-in</h2>
+      <p>Everyone can read and share this tree. Changing it needs a
+         <strong>fine-grained</strong> personal access token with
+         <strong>Contents: read and write</strong> on
+         <code>${REPO_OWNER}/${REPO_NAME}</code> — and, to reach the withheld
+         records, on <code>${REPO_OWNER}/${PRIVATE_REPO}</code> as well.
+         Give it a short expiry.</p>
       <p><a href="https://github.com/settings/personal-access-tokens/new"
             target="_blank" rel="noopener">Create one on GitHub →</a></p>
       <label class="fld"><span>Token</span>
@@ -1214,21 +1536,33 @@ function buildChrome() {
                placeholder="github_pat_…"></label>
       <label class="check"><input type="checkbox" id="auth-remember">
         Remember on this device</label>
+      <p id="auth-note" class="auth-note"></p>
       <p class="auth-warn">The token stays in this browser and goes only to
          github.com. Leave the box unticked on a shared machine and it is
-         forgotten when you close the tab.</p>
+         forgotten when you close the tab. Nothing here checks the token itself —
+         GitHub does, every time, which is what makes this a real boundary and
+         not a password on a public page.</p>
       <div class="btn-row">
         <button type="button" class="mini" id="auth-forget">Forget token</button>
         <button type="button" class="mini" id="auth-cancel">Cancel</button>
-        <button type="button" class="mini primary" id="auth-save">Save &amp; publish</button>
+        <button type="button" class="mini primary" id="auth-save">Sign in</button>
       </div>
     </div>`;
   document.body.appendChild(dlg);
 }
 
+// `becomeAdmin` is exported for the test suites as well as the sign-in flow.
+// That is not a way past anything: it reveals the editing interface, and every
+// write that interface can attempt is still refused by GitHub without a token
+// it accepts. The role decides what is drawn, never what is permitted.
 window.Editor = { init, setEditing, verify, scrub, deriveLiving, parseDate,
-                  buildPayload, buildMediaPayload, stageUpload, removePhotograph,
+                  buildPayload, buildPrivatePayload, buildMediaPayload,
+                  redactForPublication, stageUpload, removePhotograph,
                   processImage, generatedName,
+                  becomeAdmin, signOut, checkToken, openPrivateRecord,
+                  get role() { return role; },
+                  get fullRecord() { return fullRecord; },
+                  set fullRecord(v) { fullRecord = !!v; },
                   get dirty() { return dirty; },
                   get pending() { return pendingUploads; },
                   get deletes() { return pendingDeletes; } };
